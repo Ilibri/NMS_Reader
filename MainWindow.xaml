@@ -1,0 +1,351 @@
+<Window x:Class="NMS_Reader.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NMS_READER // No Man's Sky Lore Companion" 
+        Height="710" Width="870"
+        MinHeight="600" MinWidth="760"
+        Background="#0d1117"
+        WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <!-- Card Style -->
+        <Style x:Key="CardPanel" TargetType="Border">
+            <Setter Property="Background" Value="#161b26"/>
+            <Setter Property="BorderBrush" Value="#212838"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14"/>
+        </Style>
+
+        <!-- Section Header Text -->
+        <Style x:Key="CardHeader" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#f1f5f9"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+        </Style>
+
+        <Style x:Key="CardSubtitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#94a3b8"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- Preset Button Style -->
+        <Style x:Key="PresetBtn" TargetType="Button">
+            <Setter Property="Background" Value="#1e293b"/>
+            <Setter Property="Foreground" Value="#e2e8f0"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="Margin" Value="0,0,5,5"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- Dark CheckBox Style -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#f1f5f9"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Header -->
+            <RowDefinition Height="Auto"/> <!-- Quick Actions -->
+            <RowDefinition Height="*"/>    <!-- Cards Grid -->
+        </Grid.RowDefinitions>
+
+        <!-- 1. TOP HEADER (BRANDING & STATUS) -->
+        <Border Grid.Row="0" Style="{StaticResource CardPanel}" Padding="14,10" Margin="0,0,0,10">
+            <DockPanel LastChildFill="False">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="◆ NMS_READER" FontFamily="Segoe UI" FontSize="20" FontWeight="Bold" Foreground="#38bdf8"/>
+                    <TextBlock Text=" // NMS NEURAL LORE COMPANION" FontFamily="Segoe UI" FontSize="12" FontWeight="Bold" Foreground="#94a3b8" VerticalAlignment="Center" Margin="6,2,0,0"/>
+                </StackPanel>
+
+                <Border x:Name="StatusPill" DockPanel.Dock="Right" Background="#064e3b" CornerRadius="6" Padding="12,5" VerticalAlignment="Center">
+                    <TextBlock x:Name="StatusText" Text="● NMS АКТИВНА: ЗАЖМИТЕ 'E' ДЛЯ ДИАЛОГА" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold" Foreground="#34d399"/>
+                </Border>
+            </DockPanel>
+        </Border>
+
+        <!-- 2. QUICK ACTIONS TOOLBAR -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button x:Name="BtnStop" Content="■ Стоп / Старт речи (F3)" Width="190" Height="36" Margin="0,0,10,0"
+                    Background="#ef4444" Foreground="White" FontWeight="Bold" FontFamily="Segoe UI" FontSize="12"
+                    BorderThickness="0" Cursor="Hand" Click="BtnStop_Click"/>
+
+            <Button x:Name="BtnTest" Content="🔊 Проверить голос" Width="170" Height="36" Margin="0,0,10,0"
+                    Background="#1f2937" Foreground="#f1f5f9" FontFamily="Segoe UI" FontSize="12"
+                    BorderBrush="#374151" BorderThickness="1" Cursor="Hand" Click="BtnTest_Click"/>
+
+            <Button x:Name="BtnManualScan" Content="🔍 Просканировать (F4)" Width="180" Height="36" Margin="0,0,10,0"
+                    Background="#161b26" Foreground="#94a3b8" FontFamily="Segoe UI" FontSize="12"
+                    BorderBrush="#212838" BorderThickness="1" Cursor="Hand" Click="BtnManualScan_Click"/>
+        </StackPanel>
+
+        <!-- 3. MAIN CARDS (2x2 GRID) -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.18*"/>
+                <ColumnDefinition Width="0.82*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- CARD 1: ГОЛОС И ХАРАКТЕР ПЕРСОНАЖА -->
+            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardPanel}" Margin="0,0,6,10">
+                <StackPanel>
+                    <TextBlock Text="ГОЛОС И ХАРАКТЕР ПЕРСОНАЖА" Style="{StaticResource CardHeader}"/>
+                    <TextBlock Text="Живая интонация Piper TTS + тонкая настройка и эффекты" Style="{StaticResource CardSubtitle}"/>
+
+                    <!-- Profile Management Bar -->
+                    <Border Background="#0f141c" BorderBrush="#212838" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                                <TextBlock Text="Профиль:" Foreground="#94a3b8" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <Border x:Name="ProfileActiveBadge" Background="#064e3b" CornerRadius="4" Padding="5,2" VerticalAlignment="Center">
+                                    <TextBlock x:Name="ProfileActiveText" Text="● АКТИВЕН" Foreground="#34d399" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </StackPanel>
+
+                            <ComboBox x:Name="ProfileComboBox" Grid.Column="1" Height="26" Background="#161b26" Foreground="#111"
+                                      FontSize="11" VerticalAlignment="Center" SelectionChanged="ProfileComboBox_SelectionChanged"/>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+                                <Button x:Name="BtnCreateProfile" Content="➕ Создать" ToolTip="Создать новый пресет-пак"
+                                        Height="26" Padding="6,2" Margin="0,0,4,0" Background="#1e293b" Foreground="#38bdf8"
+                                        BorderBrush="#334155" BorderThickness="1" Cursor="Hand" Click="BtnCreateProfile_Click"/>
+                                <Button x:Name="BtnSaveProfile" Content="💾 Сохранить" ToolTip="Сохранить текущие настройки в активный пресет"
+                                        Height="26" Padding="6,2" Margin="0,0,4,0" Background="#1e293b" Foreground="#34d399"
+                                        BorderBrush="#334155" BorderThickness="1" Cursor="Hand" Click="BtnSaveProfile_Click"/>
+                                <Button x:Name="BtnDeleteProfile" Content="🗑️" ToolTip="Удалить пользовательский пресет"
+                                        Height="26" Width="26" Padding="0" Background="#1e293b" Foreground="#f87171"
+                                        BorderBrush="#334155" BorderThickness="1" Cursor="Hand" Click="BtnDeleteProfile_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Voice selector -->
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="Базовый диктор:" Foreground="#94a3b8" FontSize="11" Width="105" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="VoiceComboBox" Height="30" Background="#0f141c" Foreground="#111" 
+                                  SelectionChanged="VoiceComboBox_SelectionChanged"/>
+                    </DockPanel>
+
+                    <!-- Presets buttons: Character thoughts -->
+                    <TextBlock x:Name="ThoughtsHeader" Text="🎭 Мысли персонажа / Скафандр:" Foreground="#94a3b8" FontSize="11" Margin="0,2,0,3" FontWeight="SemiBold"/>
+                    <WrapPanel Margin="0,0,0,4">
+                        <Button x:Name="BtnSuitFemale" Content="👩 Женский шлем" Style="{StaticResource PresetBtn}" Click="PresetSuitFemale_Click"/>
+                        <Button x:Name="BtnSuitMale" Content="👨 Мужской шлем" Style="{StaticResource PresetBtn}" Click="PresetSuitMale_Click"/>
+                    </WrapPanel>
+
+                    <!-- Presets buttons: NMS universe -->
+                    <TextBlock x:Name="UniverseHeader" Text="🌌 Расы и объекты No Man's Sky:" Foreground="#94a3b8" FontSize="11" Margin="0,2,0,3" FontWeight="SemiBold"/>
+                    <WrapPanel Margin="0,0,0,8">
+                        <Button x:Name="BtnGek" Content="🐸 Торговец Гек" Style="{StaticResource PresetBtn}" Click="PresetGek_Click"/>
+                        <Button x:Name="BtnKorvax" Content="🤖 Корвакс" Style="{StaticResource PresetBtn}" Click="PresetKorvax_Click"/>
+                        <Button x:Name="BtnVykeen" Content="⚔️ Воин Вай'кин" Style="{StaticResource PresetBtn}" Click="PresetVykeen_Click"/>
+                        <Button x:Name="BtnWanderer" Content="🌌 Раса Странников" Style="{StaticResource PresetBtn}" Click="PresetWanderer_Click"/>
+                        <Button x:Name="BtnArtemis" Content="🛰️ Артемида" Style="{StaticResource PresetBtn}" Click="PresetArtemis_Click"/>
+                        <Button x:Name="BtnMonolith" Content="🌌 Монолит Атласа" Style="{StaticResource PresetBtn}" Click="PresetMonolith_Click"/>
+                    </WrapPanel>
+
+                    <Separator Background="#212838" Margin="0,2,0,8"/>
+
+                    <!-- Sliders Grid (2 columns) -->
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Column: Speed, Pitch, Bass, NoiseScale -->
+                        <StackPanel Grid.Column="0">
+                            <!-- Speed -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Скорость речи:" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="SpeedLabel" Text="1.15x" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="SpeedSlider" Minimum="0.75" Maximum="1.6" Value="1.15" TickFrequency="0.05" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,5" ValueChanged="SpeedSlider_ValueChanged"/>
+
+                            <!-- Pitch -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Высота тона (Pitch):" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="PitchLabel" Text="1.00x" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="PitchSlider" Minimum="0.70" Maximum="1.40" Value="1.00" TickFrequency="0.02" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,5" ValueChanged="PitchSlider_ValueChanged"/>
+
+                            <!-- Bass -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Бас / Глубина:" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="BassLabel" Text="0 dB" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="BassSlider" Minimum="-6" Maximum="10" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,5" ValueChanged="BassSlider_ValueChanged"/>
+
+                            <!-- NoiseScale (Живость интонаций) -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Живость / Эмоции:" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="NoiseLabel" Text="0.67" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="NoiseSlider" Minimum="0.20" Maximum="1.00" Value="0.67" TickFrequency="0.05" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,4" ValueChanged="NoiseSlider_ValueChanged"/>
+                        </StackPanel>
+
+                        <!-- Right Column: Reverb, Exosuit Intercom, Treble, Silence -->
+                        <StackPanel Grid.Column="2">
+                            <!-- Reverb -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Объем (Реверберация):" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="ReverbLabel" Text="0%" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="ReverbSlider" Minimum="0" Maximum="0.60" Value="0" TickFrequency="0.05" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,5" ValueChanged="ReverbSlider_ValueChanged"/>
+
+                            <!-- Exosuit Radio Intercom -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Рация шлема (Интерком):" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="ExosuitLabel" Text="0%" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="ExosuitSlider" Minimum="0" Maximum="1.0" Value="0" TickFrequency="0.05" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,5" ValueChanged="ExosuitSlider_ValueChanged"/>
+
+                            <!-- Treble -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Четкость (ВЧ):" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="TrebleLabel" Text="0 dB" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="TrebleSlider" Minimum="-6" Maximum="10" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,5" ValueChanged="TrebleSlider_ValueChanged"/>
+
+                            <!-- SentenceSilence (Паузы) -->
+                            <DockPanel Margin="0,0,0,2">
+                                <TextBlock Text="Паузы между мыслями:" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock x:Name="SilenceLabel" Text="0.25 с" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <Slider x:Name="SilenceSlider" Minimum="0.10" Maximum="0.80" Value="0.25" TickFrequency="0.05" IsSnapToTickEnabled="True" 
+                                    Margin="0,0,0,4" ValueChanged="SilenceSlider_ValueChanged"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Effect Toggles -->
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <CheckBox x:Name="CyberCheck" Content="Кибер-дрон (Корвакс)" Foreground="#93c5fd" FontSize="11" Checked="FxChanged" Unchecked="FxChanged"/>
+                            <CheckBox x:Name="GekCheck" Content="Горловое кваканье (Гек)" Foreground="#93c5fd" FontSize="11" Checked="FxChanged" Unchecked="FxChanged"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <CheckBox x:Name="WarmDriveCheck" Content="Теплый сатуратор (драйв)" Foreground="#93c5fd" FontSize="11" Checked="FxChanged" Unchecked="FxChanged"/>
+                            <CheckBox x:Name="VykeenRoarCheck" Content="Боевой рык (Вай'кин)" Foreground="#93c5fd" FontSize="11" Checked="FxChanged" Unchecked="FxChanged"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- CARD 2: АВТО-РЕЖИМ И ФИЛЬТРАЦИЯ -->
+            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardPanel}" Margin="6,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="АВТО-РЕЖИМ И ФИЛЬТРАЦИЯ" Style="{StaticResource CardHeader}"/>
+                    <TextBlock Text="Автоматическое чтение при зажатии «E»" Style="{StaticResource CardSubtitle}"/>
+
+                    <CheckBox x:Name="AutoDetectCheck" Content="Авто-чтение при зажатии «E» в игре (Hands-free)" IsChecked="True" 
+                              Foreground="#38bdf8" FontWeight="SemiBold" Checked="AutoDetect_Changed" Unchecked="AutoDetect_Changed"/>
+
+                    <CheckBox x:Name="OnlyNmsCheck" Content="Захватывать ТОЛЬКО при активной No Man's Sky" IsChecked="True" 
+                              Foreground="#34d399" FontWeight="SemiBold" Checked="OnlyNmsCheck_Changed" Unchecked="OnlyNmsCheck_Changed"/>
+
+                    <CheckBox x:Name="SkipTitleCheck" Content="Пропускать имя говорящего / заголовок" IsChecked="True" 
+                              Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+
+                    <CheckBox x:Name="SkipChoicesCheck" Content="Пропускать варианты выбора (1. Вставить..., 2. Отойти)" IsChecked="True" 
+                              Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+
+                    <CheckBox x:Name="TrayCheck" Content="Сворачивать в трей при нажатии «—»" IsChecked="True" 
+                              Checked="TrayCheck_Changed" Unchecked="TrayCheck_Changed"/>
+                </StackPanel>
+            </Border>
+
+            <!-- CARD 3: УПРАВЛЕНИЕ -->
+            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardPanel}" Margin="0,0,6,0">
+                <StackPanel>
+                    <TextBlock Text="УПРАВЛЕНИЕ В ИГРЕ" Style="{StaticResource CardHeader}"/>
+                    <TextBlock Text="Горячие клавиши поверх No Man's Sky" Style="{StaticResource CardSubtitle}"/>
+
+                    <!-- Key 1 -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="105"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="#1e293b" CornerRadius="4" Padding="6,4" HorizontalAlignment="Left" Width="85">
+                            <TextBlock Text="F3" FontWeight="Bold" Foreground="#ef4444" FontFamily="Consolas" FontSize="13" HorizontalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="Остановить / запустить речь (тишина / повтор)" Foreground="#f1f5f9" VerticalAlignment="Center" FontSize="12"/>
+                    </Grid>
+
+                    <!-- Key 2 -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="105"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="#1e293b" CornerRadius="4" Padding="6,4" HorizontalAlignment="Left" Width="85">
+                            <TextBlock Text="Удержание E" FontWeight="Bold" Foreground="#38bdf8" FontFamily="Segoe UI" FontSize="11" HorizontalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="Взаимодействие в игре (активирует авто-чтение)" Foreground="#f1f5f9" VerticalAlignment="Center" FontSize="12"/>
+                    </Grid>
+
+                    <Border Background="#0d1117" BorderBrush="#212838" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,4,0,0">
+                        <TextBlock Text="✨ Просто зажмите «E» перед пришельцем или монолитом — озвучка начнется автоматически. Нажмите F3, чтобы прервать голос в любой момент." 
+                                   Foreground="#94a3b8" FontSize="11" TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- CARD 4: БОРТОВОЙ ЖУРНАЛ (LORE LOG) -->
+            <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardPanel}" Margin="6,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                        <TextBlock Text="БОРТОВОЙ ЖУРНАЛ (ПОСЛЕДНИЙ ТЕКСТ)" Style="{StaticResource CardHeader}"/>
+                        <TextBlock x:Name="LogTimestamp" Text="" Foreground="#94a3b8" FontSize="11" DockPanel.Dock="Right" VerticalAlignment="Center"/>
+                    </DockPanel>
+
+                    <TextBox x:Name="LoreTextBox" Grid.Row="1" Background="#0d1117" Foreground="#f1f5f9" 
+                             BorderBrush="#212838" BorderThickness="1" FontFamily="Segoe UI" FontSize="12" 
+                             TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" 
+                             Padding="10" Text="Ожидание диалога в No Man's Sky...&#x0a;&#x0a;Переключитесь в игру и зажмите «E» перед любым обелиском или пришельцем. Сюжет будет прочитан автоматически."/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

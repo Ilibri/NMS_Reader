@@ -1,0 +1,20 @@
+## Build and temporary output
+bin/
+obj/
+publish/
+publish_temp/
+*.pdb
+
+## Visual Studio & IDEs
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Temporary / Logs
+*.log
+*.tmp
+thumbs.db
+ehthumbs.db
+Desktop.ini
