@@ -24,9 +24,11 @@ namespace NMS_Reader.Services
         private const int SM_CYSCREEN = 1;
 
         private readonly OcrEngine? _ocrEngine;
+        private readonly DialogueDatabaseService? _dialogueDb;
 
-        public OcrService()
+        public OcrService(DialogueDatabaseService? dialogueDb = null)
         {
+            _dialogueDb = dialogueDb;
             _ocrEngine = OcrEngine.TryCreateFromLanguage(new Language("ru"))
                          ?? OcrEngine.TryCreateFromUserProfileLanguages();
         }
@@ -239,13 +241,14 @@ namespace NMS_Reader.Services
                     else
                         lineRace = "suit"; // White text: thoughts of protagonist!
 
+                    string corrected = _dialogueDb?.MatchAndCorrect(cleanedLine) ?? cleanedLine;
                     if (segments.Count > 0 && segments[^1].Race == lineRace)
                     {
-                        segments[^1].Text += " " + cleanedLine;
+                        segments[^1].Text += " " + corrected;
                     }
                     else
                     {
-                        segments.Add(new DialogueSegment(lineRace, cleanedLine));
+                        segments.Add(new DialogueSegment(lineRace, corrected));
                     }
                 }
             }

@@ -41,7 +41,7 @@ namespace NMS_Reader.Models
         public bool OnlyInNms { get; set; } = true;
 
         public int XMinPercent { get; set; } = 10;
-        public int XMaxPercent { get; set; } = 90;
+        public int XMaxPercent { get; set; } = 62;
         public int YMinPercent { get; set; } = 45;
         public int YMaxPercent { get; set; } = 96;
 

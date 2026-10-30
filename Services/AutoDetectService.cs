@@ -218,7 +218,7 @@ namespace NMS_Reader.Services
                     var rawLines = await _ocrService.RecognizeFromBitmapAsync(bmp, _config.SkipChoices);
                     string cleaned = NmsTextCleaner.Clean(rawLines, _config.SkipTitle, _config.SkipChoices);
 
-                    if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Length >= 8)
+                    if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Length >= 32 && CountWords(cleaned) >= 4)
                     {
                         _emptyCount = 0;
 
@@ -356,7 +356,7 @@ namespace NMS_Reader.Services
                             segments.Add(new DialogueSegment(detectedRace, finalCleaned));
                         }
 
-                        if (string.IsNullOrWhiteSpace(finalCleaned) || finalCleaned.Length < 6)
+                        if (string.IsNullOrWhiteSpace(finalCleaned) || finalCleaned.Length < 32 || CountWords(finalCleaned) < 4)
                         {
                             continue;
                         }
@@ -413,6 +413,12 @@ namespace NMS_Reader.Services
             if (string.IsNullOrWhiteSpace(text)) return string.Empty;
             string norm = Regex.Replace(text.ToLowerInvariant(), @"[^\p{L}\p{Nd}\s]", " ");
             return Regex.Replace(norm, @"\s+", " ").Trim();
+        }
+
+        private static int CountWords(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return 0;
+            return s.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
         }
 
         public static bool IsSameDialogue(string text1, string text2)

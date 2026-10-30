@@ -31,6 +31,15 @@ namespace NMS_Reader.Services
             "ВЫХОД В СИСТЕМУ", "ГЛАВНОЕ МЕНЮ", "ЭКСПЕДИЦИЯ", "ВИДЕО"
         };
 
+        // Inventory, Crafting, and Resource keywords to reject completely
+        private static readonly string[] InventoryKeywords = new[]
+        {
+            "СНАРЯЖЕНИЕ", "ТЕХНОЛОГИИ", "ГРУЗ", "МУЛЬТИТУЛ", "КОРАБЛЬ", "ИНВЕНТАРЬ",
+            "ЯЧЕЙКА", "СВОБОДНО", "ВМЕСТИМОСТЬ", "СТОИМОСТЬ", "УСТАНОВИТЬ", "ПЕРЕМЕСТИТЬ",
+            "РАЗОБРАТЬ", "ЗАРЯДИТЬ", "СОЗДАТЬ ПРОДУКТ", "СОЗДАТЬ ТЕХНОЛОГИЮ", "ТЕКУЩЕЕ ЗАДАНИЕ",
+            "ЦЕЛЬ МИССИИ", "НАЖМИТЕ", "УДЕРЖИВАЙТЕ", "ОТКРЫТЬ", "СЕСТЬ В", "ПОКИНУТЬ"
+        };
+
         // HUD elements (environmental hazard, quest tracker, quick menu prompts)
         private static readonly string[] HudKeywords = new[]
         {
@@ -72,6 +81,11 @@ namespace NMS_Reader.Services
             }
 
             if (list.Any(l => TradeKeywords.Any(k => l.Contains(k, StringComparison.OrdinalIgnoreCase))))
+            {
+                return true;
+            }
+
+            if (list.Any(l => InventoryKeywords.Any(k => l.Contains(k, StringComparison.OrdinalIgnoreCase))))
             {
                 return true;
             }

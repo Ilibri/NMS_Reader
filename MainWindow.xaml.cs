@@ -19,6 +19,7 @@ namespace NMS_Reader
         private readonly HotkeyService _hotkeyService;
         private readonly TrayIconService _trayIcon;
         private readonly AutoDetectService _autoDetect;
+        private readonly DialogueDatabaseService _dialogueDb;
         private bool _isProcessing = false;
         private bool _isInitializing = true;
         private List<VoiceProfile> _profiles = new();
@@ -29,8 +30,9 @@ namespace NMS_Reader
         public MainWindow()
         {
             _config = AppConfig.Load();
+            _dialogueDb = new DialogueDatabaseService();
+            _ocrService = new OcrService(_dialogueDb);
             _speechService = new SpeechService();
-            _ocrService = new OcrService();
             _hotkeyService = new HotkeyService();
             _trayIcon = new TrayIconService(this);
             _autoDetect = new AutoDetectService(_ocrService, _speechService, _config);
@@ -310,9 +312,7 @@ namespace NMS_Reader
                     _speechService.SetVoice(suitVoice);
                 }
 
-                string greeting = isMale
-                    ? "Системы экзокостюма активированы. Готов к исследованию."
-                    : "Системы экзокостюма активированы. Готова к исследованию.";
+                string greeting = "Диктор запущен.";
                 await _speechService.SpeakAsync(greeting, 1.00, suitEffects, () =>
                 {
                     if (savedVoice != null)
@@ -356,6 +356,8 @@ namespace NMS_Reader
 
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
+            _dialogueDb?.Dispose();
+            _dialogueDb?.Dispose();
             _autoDetect.Dispose();
             _speechService.Stop();
             _hotkeyService.Dispose();

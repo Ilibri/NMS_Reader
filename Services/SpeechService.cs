@@ -240,24 +240,108 @@ namespace NMS_Reader.Services
         {
             if (token.IsCancellationRequested || !IsSpeaking) return;
 
-            byte[]? wavBytes = await Task.Run(() => SynthesizeWithPiper(text, rate, noiseScale, sentenceSilence, token), token);
-            if (token.IsCancellationRequested || !IsSpeaking || wavBytes == null) return;
-
-            if (wavBytes.Length <= 44)
+            var sentences = SplitIntoSentences(text);
+            if (sentences.Count == 0)
             {
-                // Fallback to WinRT if Piper synthesis failed
-                await SpeakWinRtAsync(text, rate, effects, onComplete, token);
+                onComplete?.Invoke();
                 return;
             }
 
-            // Apply C# DSP Effects (SmbPitchShift, Biquad Bass/Treble, Schroeder Reverb, Echo, Cyber, Exosuit)
-            byte[] processedWav = await Task.Run(() => AudioDspService.ProcessWav(wavBytes, effects), token);
+            if (sentences.Count == 1)
+            {
+                var sw = Stopwatch.StartNew();
+                byte[]? wavBytes = await Task.Run(() => SynthesizeWithPiper(sentences[0], rate, noiseScale, sentenceSilence, token), token);
+                if (token.IsCancellationRequested || !IsSpeaking || wavBytes == null || wavBytes.Length <= 44)
+                {
+                    if (wavBytes == null || wavBytes.Length <= 44)
+                    {
+                        await SpeakWinRtAsync(text, rate, effects, onComplete, token);
+                    }
+                    return;
+                }
+
+                byte[] processedWav = await Task.Run(() => AudioDspService.ProcessWav(wavBytes, effects), token);
+                if (token.IsCancellationRequested || !IsSpeaking) return;
+
+                Debug.WriteLine($"[TTS Single] Synthesis & DSP completed in {sw.ElapsedMilliseconds} ms");
+                await PlayWavAsync(processedWav, token);
+
+                lock (_lock) { IsSpeaking = false; }
+                if (!token.IsCancellationRequested)
+                {
+                    onComplete?.Invoke();
+                }
+                return;
+            }
+
+            // MULTI-SENTENCE STREAMING PIPELINE:
+            // First sentence plays immediately upon synthesis while subsequent sentences are computed in background.
+            var totalSw = Stopwatch.StartNew();
+            Debug.WriteLine($"[TTS Streaming] Pipeline started: {sentences.Count} sentences");
+
+            Task<byte[]?> nextTask = Task.Run(() =>
+            {
+                byte[]? raw = SynthesizeWithPiper(sentences[0], rate, noiseScale, sentenceSilence, token);
+                if (raw != null && raw.Length > 44)
+                {
+                    return AudioDspService.ProcessWav(raw, effects);
+                }
+                return null;
+            }, token);
+
+            for (int i = 0; i < sentences.Count; i++)
+            {
+                if (token.IsCancellationRequested || !IsSpeaking) break;
+
+                byte[]? currentWav = await nextTask;
+                if (token.IsCancellationRequested || !IsSpeaking) break;
+
+                if (i == 0)
+                {
+                    Debug.WriteLine($"[TTS Streaming] First sentence ready in {totalSw.ElapsedMilliseconds} ms -> Start Playback!");
+                }
+
+                // Concurrently synthesize sentence i + 1 while sentence i is playing!
+                int nextIndex = i + 1;
+                if (nextIndex < sentences.Count)
+                {
+                    nextTask = Task.Run(() =>
+                    {
+                        byte[]? raw = SynthesizeWithPiper(sentences[nextIndex], rate, noiseScale, sentenceSilence, token);
+                        if (raw != null && raw.Length > 44)
+                        {
+                            return AudioDspService.ProcessWav(raw, effects);
+                        }
+                        return null;
+                    }, token);
+                }
+
+                if (currentWav != null && currentWav.Length > 44)
+                {
+                    await PlayWavAsync(currentWav, token);
+                }
+            }
+
+            lock (_lock)
+            {
+                IsSpeaking = false;
+            }
+
+            if (!token.IsCancellationRequested)
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        private async Task PlayWavAsync(byte[] wavBytes, CancellationToken token)
+        {
             if (token.IsCancellationRequested || !IsSpeaking) return;
 
             lock (_lock)
             {
                 if (token.IsCancellationRequested || !IsSpeaking) return;
-                var ms = new MemoryStream(processedWav);
+                var ms = new MemoryStream(wavBytes);
+                _player?.Dispose();
                 _player = new SoundPlayer(ms);
             }
 
@@ -269,18 +353,47 @@ namespace NMS_Reader.Services
                     _player?.PlaySync();
                 }
                 catch { }
-                finally
+            }, token);
+        }
+
+        private static List<string> SplitIntoSentences(string text)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrWhiteSpace(text)) return result;
+
+            var rawSentences = System.Text.RegularExpressions.Regex.Split(text.Trim(), @"(?<=[.!?…\n])\s+");
+            var buffer = new StringBuilder();
+
+            foreach (var raw in rawSentences)
+            {
+                string s = raw.Trim();
+                if (string.IsNullOrEmpty(s)) continue;
+
+                if (buffer.Length > 0)
                 {
-                    lock (_lock)
+                    if (buffer.Length < 15)
                     {
-                        IsSpeaking = false;
+                        buffer.Append(' ').Append(s);
                     }
-                    if (!token.IsCancellationRequested)
+                    else
                     {
-                        onComplete?.Invoke();
+                        result.Add(buffer.ToString());
+                        buffer.Clear();
+                        buffer.Append(s);
                     }
                 }
-            }, token);
+                else
+                {
+                    buffer.Append(s);
+                }
+            }
+
+            if (buffer.Length > 0)
+            {
+                result.Add(buffer.ToString());
+            }
+
+            return result;
         }
 
         private byte[]? SynthesizeWithPiper(string text, double rate, double noiseScale = 0.67, double sentenceSilence = 0.25, CancellationToken token = default)
