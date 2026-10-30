@@ -37,10 +37,10 @@ namespace NMS_Reader.Models
         public bool SkipTitle { get; set; } = true;
         public bool SkipChoices { get; set; } = true;
         public bool MinimizeToTray { get; set; } = true;
-        public bool AutoDetectEnabled { get; set; } = true;
+        public bool AutoDetectEnabled { get; set; } = false;
         public bool OnlyInNms { get; set; } = true;
 
-        public int XMinPercent { get; set; } = 10;
+        public int XMinPercent { get; set; } = 5;
         public int XMaxPercent { get; set; } = 62;
         public int YMinPercent { get; set; } = 45;
         public int YMaxPercent { get; set; } = 96;
@@ -90,10 +90,7 @@ namespace NMS_Reader.Models
                     var cfg = JsonSerializer.Deserialize<AppConfig>(json, options);
                     if (cfg != null)
                     {
-                        cfg.XMinPercent = 5;
-                        cfg.XMaxPercent = 95;
-                        cfg.YMinPercent = 45;
-                        cfg.YMaxPercent = 96;
+                        if (cfg.XMaxPercent > 70) cfg.XMaxPercent = 62;
                         return cfg;
                     }
                 }

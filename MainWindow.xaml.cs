@@ -227,16 +227,12 @@ namespace NMS_Reader
             try
             {
                 _trayIcon.Initialize();
-                _trayIcon.OnRequestScan += () => Dispatcher.Invoke(() =>
-                {
-                    _autoDetect.Arm(6000);
-                    TriggerScan();
-                });
+                _trayIcon.OnRequestScan += () => Dispatcher.Invoke(HandleF3Toggle);
                 _trayIcon.OnRequestExit += () => Dispatcher.Invoke(ExitApplication);
             }
             catch { }
 
-            // 5. Initialize Global Hotkeys (F3 stop/toggle, F4 manual read)
+            // 5. Initialize Global Hotkeys (F3 toggle read/stop, F4 alias)
             try
             {
                 _hotkeyService.Initialize(this, (IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) =>
@@ -245,19 +241,15 @@ namespace NMS_Reader
                     return IntPtr.Zero;
                 });
 
-                _hotkeyService.OnDialogHotkeyPressed += () => Dispatcher.Invoke(() =>
-                {
-                    _autoDetect.Arm(6000);
-                    TriggerScan();
-                });
-                _hotkeyService.OnStopHotkeyPressed += () => Dispatcher.Invoke(HardStopSpeech);
+                _hotkeyService.OnDialogHotkeyPressed += () => Dispatcher.Invoke(HandleF3Toggle);
+                _hotkeyService.OnStopHotkeyPressed += () => Dispatcher.Invoke(HandleF3Toggle);
             }
             catch (Exception ex)
             {
                 SetStatus($"Ошибка хоткеев: {ex.Message}", "error");
             }
 
-            // 6. Start Auto-Detect Loop
+            // 6. Start Auto-Detect Loop (silent sleep by default)
             if (_config.AutoDetectEnabled)
             {
                 _autoDetect.Start();
@@ -265,7 +257,8 @@ namespace NMS_Reader
             }
             else
             {
-                SetStatus("Авто-режим отключен", "ready");
+                _autoDetect.Stop();
+                SetStatus("Режим ожидания (F3: зачитать / остановить)", "ready");
             }
 
             // 7. Update initial active preset button & load preset from active profile
@@ -325,16 +318,10 @@ namespace NMS_Reader
 
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.F3)
+            if (e.Key == Key.F3 || e.Key == Key.F4)
             {
                 e.Handled = true;
-                HardStopSpeech();
-            }
-            else if (e.Key == Key.F4)
-            {
-                e.Handled = true;
-                _autoDetect.Arm(6000);
-                TriggerScan();
+                HandleF3Toggle();
             }
         }
 
@@ -392,27 +379,58 @@ namespace NMS_Reader
             });
         }
 
+        private void HandleF3Toggle()
+        {
+            if (_speechService.IsSpeaking || _isProcessing || _activePlaybackCts != null)
+            {
+                HardStopSpeech();
+            }
+            else
+            {
+                TriggerScan();
+            }
+        }
+
         private async void TriggerScan()
         {
-            if (_isProcessing) return;
+            if (_isProcessing)
+            {
+                HardStopSpeech();
+                return;
+            }
             _isProcessing = true;
 
-            SetStatus("Сканирование диалога...", "busy");
+            try
+            {
+                _activePlaybackCts?.Cancel();
+                _activePlaybackCts?.Dispose();
+            }
+            catch { }
+            _activePlaybackCts = new CancellationTokenSource();
+            var token = _activePlaybackCts.Token;
+
+            SetStatus("Сканирование экрана...", "busy");
 
             try
             {
                 var t0 = DateTime.Now;
                 using var bmp = _ocrService.CaptureScreen(fullscreen: false, _config);
+                if (token.IsCancellationRequested) return;
+
                 var segments = await _ocrService.RecognizeDialogueSegmentsAsync(bmp, _config.SkipTitle, _config.SkipChoices);
+                if (token.IsCancellationRequested) return;
+
                 var elapsed = (DateTime.Now - t0).TotalSeconds;
 
                 if (segments.Count == 0)
                 {
                     var rawLines = await _ocrService.RecognizeFromBitmapAsync(bmp, _config.SkipChoices);
+                    if (token.IsCancellationRequested) return;
+
                     string cleaned = NmsTextCleaner.Clean(rawLines, _config.SkipTitle, _config.SkipChoices);
                     if (string.IsNullOrWhiteSpace(cleaned))
                     {
-                        SetStatus("Текст не найден", "ready");
+                        SetStatus("Диалог не обнаружен (F3: зачитать)", "ready");
                         return;
                     }
 
@@ -426,6 +444,7 @@ namespace NMS_Reader
 
                 for (int i = 0; i < segments.Count; i++)
                 {
+                    if (token.IsCancellationRequested) break;
                     var seg = segments[i];
                     if (string.IsNullOrWhiteSpace(seg.Text)) continue;
 
@@ -456,20 +475,45 @@ namespace NMS_Reader
                     string spokenText = CharacterStylizer.Stylize(seg.Text, _config.CharacterMode);
 
                     var tcs = new TaskCompletionSource<bool>();
-                    await _speechService.SpeakAsync(spokenText, _config.SpeakingRate, _config.GetAudioEffectsConfig(), () =>
+                    using (token.Register(() => tcs.TrySetCanceled()))
                     {
-                        tcs.TrySetResult(true);
-                    }, _config.NoiseScale, _config.SentenceSilence);
+                        await _speechService.SpeakAsync(spokenText, _config.SpeakingRate, _config.GetAudioEffectsConfig(), () =>
+                        {
+                            tcs.TrySetResult(true);
+                        }, _config.NoiseScale, _config.SentenceSilence);
 
-                    await tcs.Task;
+                        try
+                        {
+                            await tcs.Task;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
 
+                    if (token.IsCancellationRequested) break;
                     if (i < segments.Count - 1)
                     {
-                        await Task.Delay(180);
+                        try
+                        {
+                            await Task.Delay(180, token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
                     }
                 }
 
-                SetStatus("Готов к чтению", "ready");
+                if (!token.IsCancellationRequested)
+                {
+                    SetStatus("Режим ожидания (F3: зачитать / остановить)", "ready");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopped cleanly by user via F3
             }
             catch (Exception ex)
             {
@@ -493,18 +537,18 @@ namespace NMS_Reader
 
             _speechService.Stop();
             _autoDetect.SuppressCurrentDialogue();
-            SetStatus("Озвучка остановлена (F3)", "ready");
+            _isProcessing = false;
+            SetStatus("Озвучка остановлена (F3: зачитать)", "ready");
         }
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
-            HardStopSpeech();
+            HandleF3Toggle();
         }
 
         private void BtnManualScan_Click(object sender, RoutedEventArgs e)
         {
-            _autoDetect.Arm(6000);
-            TriggerScan();
+            HandleF3Toggle();
         }
 
         private async void BtnTest_Click(object sender, RoutedEventArgs e)
@@ -1150,7 +1194,7 @@ namespace NMS_Reader
             else
             {
                 _autoDetect.Stop();
-                SetStatus("Авто-режим отключен", "ready");
+                SetStatus("Режим ожидания (F3: зачитать / остановить)", "ready");
             }
 
             _config.Save();

@@ -73,22 +73,22 @@
                 </StackPanel>
 
                 <Border x:Name="StatusPill" DockPanel.Dock="Right" Background="#064e3b" CornerRadius="6" Padding="12,5" VerticalAlignment="Center">
-                    <TextBlock x:Name="StatusText" Text="● NMS АКТИВНА: ЗАЖМИТЕ 'E' ДЛЯ ДИАЛОГА" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold" Foreground="#34d399"/>
+                    <TextBlock x:Name="StatusText" Text="● РЕЖИМ ОЖИДАНИЯ (F3: ЗАЧИТАТЬ / ОСТАНОВИТЬ)" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold" Foreground="#34d399"/>
                 </Border>
             </DockPanel>
         </Border>
 
         <!-- 2. QUICK ACTIONS TOOLBAR -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-            <Button x:Name="BtnStop" Content="■ Стоп / Старт речи (F3)" Width="190" Height="36" Margin="0,0,10,0"
-                    Background="#ef4444" Foreground="White" FontWeight="Bold" FontFamily="Segoe UI" FontSize="12"
+            <Button x:Name="BtnStop" Content="⏯ Зачитать / Стоп (F3)" Width="200" Height="36" Margin="0,0,10,0"
+                    Background="#0284c7" Foreground="White" FontWeight="Bold" FontFamily="Segoe UI" FontSize="12"
                     BorderThickness="0" Cursor="Hand" Click="BtnStop_Click"/>
 
             <Button x:Name="BtnTest" Content="🔊 Проверить голос" Width="170" Height="36" Margin="0,0,10,0"
                     Background="#1f2937" Foreground="#f1f5f9" FontFamily="Segoe UI" FontSize="12"
                     BorderBrush="#374151" BorderThickness="1" Cursor="Hand" Click="BtnTest_Click"/>
 
-            <Button x:Name="BtnManualScan" Content="🔍 Просканировать (F4)" Width="180" Height="36" Margin="0,0,10,0"
+            <Button x:Name="BtnManualScan" Content="🔍 Зачитать диалог (F3)" Width="190" Height="36" Margin="0,0,10,0"
                     Background="#161b26" Foreground="#94a3b8" FontFamily="Segoe UI" FontSize="12"
                     BorderBrush="#212838" BorderThickness="1" Cursor="Hand" Click="BtnManualScan_Click"/>
         </StackPanel>
@@ -349,10 +349,10 @@
             <!-- CARD 2: АВТО-РЕЖИМ И ФИЛЬТРАЦИЯ -->
             <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardPanel}" Margin="6,0,0,10">
                 <StackPanel>
-                    <TextBlock Text="АВТО-РЕЖИМ И ФИЛЬТРАЦИЯ" Style="{StaticResource CardHeader}"/>
-                    <TextBlock Text="Автоматическое чтение при зажатии «E»" Style="{StaticResource CardSubtitle}"/>
+                    <TextBlock Text="АВТО-РЕЖИМ (ФОН)" Style="{StaticResource CardHeader}"/>
+                    <TextBlock Text="Фоновое отслеживание зажатия «E» (по умолчанию спит)" Style="{StaticResource CardSubtitle}"/>
 
-                    <CheckBox x:Name="AutoDetectCheck" Content="Авто-чтение при зажатии «E» в игре (Hands-free)" IsChecked="True" 
+                    <CheckBox x:Name="AutoDetectCheck" Content="Авто-чтение при зажатии «E» (выкл. = немой сон)" IsChecked="False" 
                               Foreground="#38bdf8" FontWeight="SemiBold" Checked="AutoDetect_Changed" Unchecked="AutoDetect_Changed"/>
 
                     <CheckBox x:Name="OnlyNmsCheck" Content="Захватывать ТОЛЬКО при активной No Man's Sky" IsChecked="True" 
@@ -382,9 +382,9 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Background="#1e293b" CornerRadius="4" Padding="6,4" HorizontalAlignment="Left" Width="85">
-                            <TextBlock Text="F3" FontWeight="Bold" Foreground="#ef4444" FontFamily="Consolas" FontSize="13" HorizontalAlignment="Center"/>
+                            <TextBlock Text="F3" FontWeight="Bold" Foreground="#38bdf8" FontFamily="Consolas" FontSize="13" HorizontalAlignment="Center"/>
                         </Border>
-                        <TextBlock Grid.Column="1" Text="Остановить / запустить речь (тишина / повтор)" Foreground="#f1f5f9" VerticalAlignment="Center" FontSize="12"/>
+                        <TextBlock Grid.Column="1" Text="Зачитать / Остановить (Один клик — читает, повторный — стоп)" Foreground="#f1f5f9" VerticalAlignment="Center" FontSize="12"/>
                     </Grid>
 
                     <!-- Key 2 -->
@@ -394,13 +394,13 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Background="#1e293b" CornerRadius="4" Padding="6,4" HorizontalAlignment="Left" Width="85">
-                            <TextBlock Text="Удержание E" FontWeight="Bold" Foreground="#38bdf8" FontFamily="Segoe UI" FontSize="11" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Зажатие E" FontWeight="Bold" Foreground="#94a3b8" FontFamily="Segoe UI" FontSize="11" HorizontalAlignment="Center"/>
                         </Border>
-                        <TextBlock Grid.Column="1" Text="Взаимодействие в игре (активирует авто-чтение)" Foreground="#f1f5f9" VerticalAlignment="Center" FontSize="12"/>
+                        <TextBlock Grid.Column="1" Text="Действие в NMS (авто-чтение спит, пока выключена галочка)" Foreground="#94a3b8" VerticalAlignment="Center" FontSize="12"/>
                     </Grid>
 
                     <Border Background="#0d1117" BorderBrush="#212838" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,4,0,0">
-                        <TextBlock Text="✨ Просто зажмите «E» перед пришельцем или монолитом — озвучка начнется автоматически. Нажмите F3, чтобы прервать голос в любой момент." 
+                        <TextBlock Text="✨ Просто нажмите F3 перед любым диалогом или монолитом — диктор озвучит текст. Нажмите F3 повторно, чтобы мгновенно прервать речь.&#x0a;Фоновый сканер в режиме сна: 0% нагрузки и никаких ложных озвучек при визоре F!" 
                                    Foreground="#94a3b8" FontSize="11" TextWrapping="Wrap"/>
                     </Border>
                 </StackPanel>
@@ -422,7 +422,7 @@
                     <TextBox x:Name="LoreTextBox" Grid.Row="1" Background="#0d1117" Foreground="#f1f5f9" 
                              BorderBrush="#212838" BorderThickness="1" FontFamily="Segoe UI" FontSize="12" 
                              TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" 
-                             Padding="10" Text="Ожидание диалога в No Man's Sky...&#x0a;&#x0a;Переключитесь в игру и зажмите «E» перед любым обелиском или пришельцем. Сюжет будет прочитан автоматически."/>
+                             Padding="10" Text="Готов к чтению.&#x0a;&#x0a;Нажмите F3 в No Man's Sky перед диалогом для зачитки (или повторно F3 для остановки).&#x0a;Фоновое сканирование в режиме сна — никаких фантомных озвучек в режиме сканирования или инвентаре."/>
                 </Grid>
             </Border>
         </Grid>
