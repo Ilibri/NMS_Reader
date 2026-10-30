@@ -127,7 +127,13 @@
                             </StackPanel>
 
                             <ComboBox x:Name="ProfileComboBox" Grid.Column="1" Height="26" Background="#161b26" Foreground="#111"
-                                      FontSize="11" VerticalAlignment="Center" SelectionChanged="ProfileComboBox_SelectionChanged"/>
+                                      FontSize="11" VerticalAlignment="Center" SelectionChanged="ProfileComboBox_SelectionChanged">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Foreground="#111"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
                                 <Button x:Name="BtnCreateProfile" Content="➕ Создать" ToolTip="Создать новый пресет-пак"
@@ -150,22 +156,96 @@
                                   SelectionChanged="VoiceComboBox_SelectionChanged"/>
                     </DockPanel>
 
+                    <!-- 2 HERO & FEATURE SLOTS (Visual hero assignment & reserve slot) -->
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- LEFT BOX: ГЛАВНЫЙ ГЕРОЙ (Озвучка мыслей) -->
+                        <Border x:Name="HeroVoiceCard" Grid.Column="0" MinHeight="82"
+                                Background="#0f172a" BorderBrush="#06b6d4" BorderThickness="1.5" CornerRadius="8" Padding="12,9"
+                                AllowDrop="True" Drop="HeroSlot_Drop" DragEnter="HeroSlot_DragEnter" DragLeave="HeroSlot_DragLeave"
+                                MouseLeftButtonUp="HeroVoiceCard_MouseLeftButtonUp" Cursor="Hand"
+                                ToolTip="Мысли Главного Героя (белый текст). Нажмите или перетащите сюда любой голос ниже!">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Header -->
+                                <DockPanel Grid.Row="0" LastChildFill="False">
+                                    <Border Background="#0369a1" CornerRadius="3" Padding="5,2" VerticalAlignment="Center">
+                                        <TextBlock Text="МЫСЛИ ГЕРОЯ" Foreground="#e0f2fe" FontSize="9" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="ГЛАВНЫЙ ГЕРОЙ" Foreground="#94a3b8" FontSize="11" FontWeight="Bold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <!-- Active Voice Name and Avatar -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,6,0,6">
+                                    <TextBlock x:Name="HeroVoiceEmoji" Text="👩" FontSize="28" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock x:Name="HeroVoiceTitle" Text="Женский голос (Ирина)" Foreground="#f8fafc" FontSize="13" FontWeight="Bold"/>
+                                        <TextBlock x:Name="HeroVoiceSub" Text="● Озвучивает мысли героя и белый текст" Foreground="#38bdf8" FontSize="10"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Drag-and-drop hint -->
+                                <TextBlock Grid.Row="2" Text="⚡ Перетащите сюда любой голос снизу для назначения" Foreground="#64748b" FontSize="9" FontStyle="Italic"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- RIGHT BOX: СВОБОДНЫЙ СЛОТ (Пока пусто) -->
+                        <Border Grid.Column="2" MinHeight="82"
+                                Background="#0c1017" BorderBrush="#1e293b" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                            <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="📦" FontSize="22" HorizontalAlignment="Center" Margin="0,0,0,3" Opacity="0.6"/>
+                                    <TextBlock Text="тут покачто пусто будет" Foreground="#475569" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Свободная область для будущих функций" Foreground="#334155" FontSize="9" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
                     <!-- Presets buttons: Character thoughts -->
-                    <TextBlock x:Name="ThoughtsHeader" Text="🎭 Мысли персонажа / Скафандр:" Foreground="#94a3b8" FontSize="11" Margin="0,2,0,3" FontWeight="SemiBold"/>
+                    <DockPanel LastChildFill="False" Margin="0,2,0,3">
+                        <TextBlock x:Name="ThoughtsHeader" Text="🎭 Голоса главного героя (мысли и белый текст):" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold"/>
+                    </DockPanel>
                     <WrapPanel Margin="0,0,0,4">
-                        <Button x:Name="BtnSuitFemale" Content="👩 Женский шлем" Style="{StaticResource PresetBtn}" Click="PresetSuitFemale_Click"/>
-                        <Button x:Name="BtnSuitMale" Content="👨 Мужской шлем" Style="{StaticResource PresetBtn}" Click="PresetSuitMale_Click"/>
+                        <Button x:Name="BtnSuitFemale" Tag="suit_female" Content="👩 Женский голос" Style="{StaticResource PresetBtn}" Click="PresetSuitFemale_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Чистый женский голос (Ирина). Перетащите в слот Главного Героя!"/>
+                        <Button x:Name="BtnSuitMale" Tag="suit_male" Content="👨 Мужской голос" Style="{StaticResource PresetBtn}" Click="PresetSuitMale_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Мужской голос (Руслан). Перетащите в слот Главного Героя!"/>
                     </WrapPanel>
 
                     <!-- Presets buttons: NMS universe -->
-                    <TextBlock x:Name="UniverseHeader" Text="🌌 Расы и объекты No Man's Sky:" Foreground="#94a3b8" FontSize="11" Margin="0,2,0,3" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="UniverseHeader" Text="🌌 Расы и объекты No Man's Sky (звучат в диалогах):" Foreground="#94a3b8" FontSize="11" Margin="0,2,0,3" FontWeight="SemiBold"/>
                     <WrapPanel Margin="0,0,0,8">
-                        <Button x:Name="BtnGek" Content="🐸 Торговец Гек" Style="{StaticResource PresetBtn}" Click="PresetGek_Click"/>
-                        <Button x:Name="BtnKorvax" Content="🤖 Корвакс" Style="{StaticResource PresetBtn}" Click="PresetKorvax_Click"/>
-                        <Button x:Name="BtnVykeen" Content="⚔️ Воин Вай'кин" Style="{StaticResource PresetBtn}" Click="PresetVykeen_Click"/>
-                        <Button x:Name="BtnWanderer" Content="🌌 Раса Странников" Style="{StaticResource PresetBtn}" Click="PresetWanderer_Click"/>
-                        <Button x:Name="BtnArtemis" Content="🛰️ Артемида" Style="{StaticResource PresetBtn}" Click="PresetArtemis_Click"/>
-                        <Button x:Name="BtnMonolith" Content="🌌 Монолит Атласа" Style="{StaticResource PresetBtn}" Click="PresetMonolith_Click"/>
+                        <Button x:Name="BtnGek" Tag="gek" Content="🐸 Торговец Гек" Style="{StaticResource PresetBtn}" Click="PresetGek_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос Гека (зеленый текст). Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnKorvax" Tag="korvax" Content="🤖 Корвакс" Style="{StaticResource PresetBtn}" Click="PresetKorvax_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Кибер-голос Корвакса (сиреневый текст). Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnVykeen" Tag="vykeen" Content="⚔️ Воин Вай'кин" Style="{StaticResource PresetBtn}" Click="PresetVykeen_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Низкий бас Вай'кина (красный текст). Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnWanderer" Tag="wanderer" Content="🌌 Раса Странников" Style="{StaticResource PresetBtn}" Click="PresetWanderer_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос Странника. Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnArtemis" Tag="artemis" Content="🛰️ Артемида" Style="{StaticResource PresetBtn}" Click="PresetArtemis_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос Артемиды. Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnMonolith" Tag="monolith" Content="🌌 Монолит Атласа" Style="{StaticResource PresetBtn}" Click="PresetMonolith_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Загадочный хор Монолита. Можно перетащить в слот Главного Героя!"/>
                     </WrapPanel>
 
                     <Separator Background="#212838" Margin="0,2,0,8"/>
@@ -225,7 +305,7 @@
 
                             <!-- Exosuit Radio Intercom -->
                             <DockPanel Margin="0,0,0,2">
-                                <TextBlock Text="Рация шлема (Интерком):" Foreground="#94a3b8" FontSize="11"/>
+                                <TextBlock Text="Рация / Интерком:" Foreground="#94a3b8" FontSize="11"/>
                                 <TextBlock x:Name="ExosuitLabel" Text="0%" Foreground="#38bdf8" FontWeight="Bold" FontSize="11" DockPanel.Dock="Right"/>
                             </DockPanel>
                             <Slider x:Name="ExosuitSlider" Minimum="0" Maximum="1.0" Value="0" TickFrequency="0.05" IsSnapToTickEnabled="True" 
@@ -261,7 +341,6 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <CheckBox x:Name="WarmDriveCheck" Content="Теплый сатуратор (драйв)" Foreground="#93c5fd" FontSize="11" Checked="FxChanged" Unchecked="FxChanged"/>
-                            <CheckBox x:Name="VykeenRoarCheck" Content="Боевой рык (Вай'кин)" Foreground="#93c5fd" FontSize="11" Checked="FxChanged" Unchecked="FxChanged"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>

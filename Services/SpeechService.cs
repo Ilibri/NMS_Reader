@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -34,6 +34,7 @@ namespace NMS_Reader.Services
         private readonly SpeechSynthesizer _winRtSynth = new();
         private SoundPlayer? _player;
         private Process? _currentProc;
+        private CancellationTokenSource? _currentSpeechCts;
         private readonly object _lock = new();
 
         public List<VoiceItem> Voices { get; } = new();
@@ -85,10 +86,9 @@ namespace NMS_Reader.Services
             {
                 var neuralVoices = new[]
                 {
-                    ("dmitri", "Дмитрий", "Естественный мужской голос", "ru_RU-dmitri-medium.onnx"),
-                    ("ruslan", "Руслан",  "Студийный мужской баритон", "ru_RU-ruslan-medium.onnx"),
                     ("irina",  "Ирина",   "Чистый выразительный женский голос", "ru_RU-irina-medium.onnx"),
-                    ("denis",  "Денис",   "Глубокий мужской бас", "ru_RU-denis-medium.onnx")
+                    ("ruslan", "Руслан",  "Студийный мужской баритон", "ru_RU-ruslan-medium.onnx"),
+                    ("dmitri", "Дмитрий", "Спокойный дикторский голос", "ru_RU-dmitri-medium.onnx")
                 };
 
                 foreach (var (id, name, desc, file) in neuralVoices)
@@ -150,6 +150,7 @@ namespace NMS_Reader.Services
         public void SetVoiceById(string id)
         {
             var match = Voices.FirstOrDefault(v => v.Id.Equals(id, StringComparison.OrdinalIgnoreCase))
+                        ?? Voices.FirstOrDefault(v => v.Id.Contains(id, StringComparison.OrdinalIgnoreCase))
                         ?? Voices.FirstOrDefault(v => v.DisplayName.Contains(id, StringComparison.OrdinalIgnoreCase));
             if (match != null)
             {
@@ -162,6 +163,14 @@ namespace NMS_Reader.Services
             lock (_lock)
             {
                 IsSpeaking = false;
+
+                try
+                {
+                    _currentSpeechCts?.Cancel();
+                    _currentSpeechCts?.Dispose();
+                }
+                catch { }
+                _currentSpeechCts = null;
 
                 try
                 {
@@ -188,24 +197,34 @@ namespace NMS_Reader.Services
         {
             if (string.IsNullOrWhiteSpace(text)) return;
 
-            Stop();
+            CancellationToken token;
+            lock (_lock)
+            {
+                Stop();
+                IsSpeaking = true;
+                _currentSpeechCts = new CancellationTokenSource();
+                token = _currentSpeechCts.Token;
+            }
 
             try
             {
-                IsSpeaking = true;
-
                 if (CurrentVoice != null && CurrentVoice.IsNeural && !string.IsNullOrEmpty(CurrentVoice.ModelPath))
                 {
-                    await SpeakNeuralPiperAsync(text, rate, effects, onComplete, noiseScale, sentenceSilence);
+                    await SpeakNeuralPiperAsync(text, rate, effects, onComplete, noiseScale, sentenceSilence, token);
                 }
                 else
                 {
-                    await SpeakWinRtAsync(text, rate, effects, onComplete);
+                    await SpeakWinRtAsync(text, rate, effects, onComplete, token);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Instant clean abort on player skip
+                lock (_lock) { IsSpeaking = false; }
             }
             catch (Exception ex)
             {
-                IsSpeaking = false;
+                lock (_lock) { IsSpeaking = false; }
                 Debug.WriteLine($"[Speech Error]: {ex.Message}");
                 onComplete?.Invoke();
             }
@@ -217,25 +236,27 @@ namespace NMS_Reader.Services
             return SpeakAsync(text, rate, new AudioEffectsConfig(), onComplete);
         }
 
-        private async Task SpeakNeuralPiperAsync(string text, double rate, AudioEffectsConfig effects, Action? onComplete, double noiseScale, double sentenceSilence)
+        private async Task SpeakNeuralPiperAsync(string text, double rate, AudioEffectsConfig effects, Action? onComplete, double noiseScale, double sentenceSilence, CancellationToken token)
         {
-            byte[]? wavBytes = await Task.Run(() => SynthesizeWithPiper(text, rate, noiseScale, sentenceSilence));
-            if (!IsSpeaking) return;
+            if (token.IsCancellationRequested || !IsSpeaking) return;
 
-            if (wavBytes == null || wavBytes.Length <= 44)
+            byte[]? wavBytes = await Task.Run(() => SynthesizeWithPiper(text, rate, noiseScale, sentenceSilence, token), token);
+            if (token.IsCancellationRequested || !IsSpeaking || wavBytes == null) return;
+
+            if (wavBytes.Length <= 44)
             {
                 // Fallback to WinRT if Piper synthesis failed
-                await SpeakWinRtAsync(text, rate, effects, onComplete);
+                await SpeakWinRtAsync(text, rate, effects, onComplete, token);
                 return;
             }
 
             // Apply C# DSP Effects (SmbPitchShift, Biquad Bass/Treble, Schroeder Reverb, Echo, Cyber, Exosuit)
-            byte[] processedWav = await Task.Run(() => AudioDspService.ProcessWav(wavBytes, effects));
-            if (!IsSpeaking) return;
+            byte[] processedWav = await Task.Run(() => AudioDspService.ProcessWav(wavBytes, effects), token);
+            if (token.IsCancellationRequested || !IsSpeaking) return;
 
             lock (_lock)
             {
-                if (!IsSpeaking) return;
+                if (token.IsCancellationRequested || !IsSpeaking) return;
                 var ms = new MemoryStream(processedWav);
                 _player = new SoundPlayer(ms);
             }
@@ -244,6 +265,7 @@ namespace NMS_Reader.Services
             {
                 try
                 {
+                    if (token.IsCancellationRequested || !IsSpeaking) return;
                     _player?.PlaySync();
                 }
                 catch { }
@@ -253,14 +275,17 @@ namespace NMS_Reader.Services
                     {
                         IsSpeaking = false;
                     }
-                    onComplete?.Invoke();
+                    if (!token.IsCancellationRequested)
+                    {
+                        onComplete?.Invoke();
+                    }
                 }
-            });
+            }, token);
         }
 
-        private byte[]? SynthesizeWithPiper(string text, double rate, double noiseScale = 0.67, double sentenceSilence = 0.25)
+        private byte[]? SynthesizeWithPiper(string text, double rate, double noiseScale = 0.67, double sentenceSilence = 0.25, CancellationToken token = default)
         {
-            if (CurrentVoice?.ModelPath == null) return null;
+            if (token.IsCancellationRequested || !IsSpeaking || CurrentVoice?.ModelPath == null) return null;
 
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string piperExe = Path.Combine(baseDir, "piper", "piper.exe");
@@ -293,7 +318,7 @@ namespace NMS_Reader.Services
 
             lock (_lock)
             {
-                if (!IsSpeaking) return null;
+                if (token.IsCancellationRequested || !IsSpeaking) return null;
                 _currentProc = Process.Start(psi);
             }
 
@@ -306,7 +331,15 @@ namespace NMS_Reader.Services
                     writer.WriteLine(text);
                 }
 
-                _currentProc.WaitForExit();
+                while (!_currentProc.WaitForExit(100))
+                {
+                    if (token.IsCancellationRequested || !IsSpeaking)
+                    {
+                        try { _currentProc.Kill(); } catch { }
+                        return null;
+                    }
+                }
+
                 int exitCode = _currentProc.ExitCode;
 
                 lock (_lock)
@@ -314,6 +347,8 @@ namespace NMS_Reader.Services
                     _currentProc?.Dispose();
                     _currentProc = null;
                 }
+
+                if (token.IsCancellationRequested || !IsSpeaking) return null;
 
                 if (exitCode == 0 && File.Exists(tempWav))
                 {
@@ -329,26 +364,29 @@ namespace NMS_Reader.Services
             return null;
         }
 
-        private async Task SpeakWinRtAsync(string text, double rate, AudioEffectsConfig effects, Action? onComplete)
+        private async Task SpeakWinRtAsync(string text, double rate, AudioEffectsConfig effects, Action? onComplete, CancellationToken token = default)
         {
+            if (token.IsCancellationRequested || !IsSpeaking) return;
+
             _winRtSynth.Options.SpeakingRate = Math.Clamp(rate, 0.5, 3.0);
             var stream = await _winRtSynth.SynthesizeTextToStreamAsync(text);
+            if (token.IsCancellationRequested || !IsSpeaking) return;
 
             byte[] wavBytes;
             using (var netStream = stream.AsStreamForRead())
             using (var ms = new MemoryStream())
             {
-                await netStream.CopyToAsync(ms);
+                await netStream.CopyToAsync(ms, token);
                 wavBytes = ms.ToArray();
             }
-            if (!IsSpeaking) return;
+            if (token.IsCancellationRequested || !IsSpeaking) return;
 
-            byte[] processedWav = await Task.Run(() => AudioDspService.ProcessWav(wavBytes, effects));
-            if (!IsSpeaking) return;
+            byte[] processedWav = await Task.Run(() => AudioDspService.ProcessWav(wavBytes, effects), token);
+            if (token.IsCancellationRequested || !IsSpeaking) return;
 
             lock (_lock)
             {
-                if (!IsSpeaking) return;
+                if (token.IsCancellationRequested || !IsSpeaking) return;
                 var ms = new MemoryStream(processedWav);
                 _player = new SoundPlayer(ms);
             }
@@ -357,6 +395,7 @@ namespace NMS_Reader.Services
             {
                 try
                 {
+                    if (token.IsCancellationRequested || !IsSpeaking) return;
                     _player?.PlaySync();
                 }
                 catch { }
@@ -366,9 +405,12 @@ namespace NMS_Reader.Services
                     {
                         IsSpeaking = false;
                     }
-                    onComplete?.Invoke();
+                    if (!token.IsCancellationRequested)
+                    {
+                        onComplete?.Invoke();
+                    }
                 }
-            });
+            }, token);
         }
 
         public void Dispose()

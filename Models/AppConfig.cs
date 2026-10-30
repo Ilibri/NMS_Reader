@@ -7,12 +7,13 @@ namespace NMS_Reader.Models
 {
     public class AppConfig
     {
-        public string VoiceModel { get; set; } = "irina"; // "dmitri", "ruslan", "irina", "denis", "windows"
-        public string VoiceName { get; set; } = "Ирина";
+        public string VoiceModel { get; set; } = "ruslan"; // "ruslan", "irina", "dmitri"
+        public string VoiceName { get; set; } = "Руслан";
         public string ActiveProfileId { get; set; } = "factory_default";
-        public string ActivePresetKey { get; set; } = "suit_female";
+        public string ActivePresetKey { get; set; } = "suit_male";
+        public string ProtagonistPresetKey { get; set; } = "suit_male"; // Chosen voice for protagonist's thoughts
         public double SpeakingRate { get; set; } = 1.0;
-        public string CharacterMode { get; set; } = "suit_female";
+        public string CharacterMode { get; set; } = "suit_male";
 
         // Neural Synthesis Nuances
         public double NoiseScale { get; set; } = 0.67;     // Expressiveness / emotional variability (0.2 - 1.0)
@@ -29,7 +30,6 @@ namespace NMS_Reader.Models
         public bool ExosuitRadio { get; set; } = false;
         public bool GekThroat { get; set; } = false;
         public bool MonolithChorus { get; set; } = false;
-        public bool VykeenRoar { get; set; } = false;
         public bool WarmDrive { get; set; } = false;
         public bool StudioCompressor { get; set; } = true;
 
@@ -45,7 +45,16 @@ namespace NMS_Reader.Models
         public int YMinPercent { get; set; } = 45;
         public int YMaxPercent { get; set; } = 96;
 
-        private static readonly string ConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+        public static string GetConfigPath()
+        {
+            string p1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+            if (File.Exists(p1)) return p1;
+            string p2 = Path.Combine(Directory.GetCurrentDirectory(), "config.json");
+            if (File.Exists(p2)) return p2;
+            string p3 = Path.Combine(AppContext.BaseDirectory, "config.json");
+            if (File.Exists(p3)) return p3;
+            return p1;
+        }
 
         public AudioEffectsConfig GetAudioEffectsConfig() => new()
         {
@@ -59,7 +68,6 @@ namespace NMS_Reader.Models
             ExosuitMix = ExosuitMix,
             GekThroat = GekThroat,
             MonolithChorus = MonolithChorus,
-            VykeenRoar = VykeenRoar,
             WarmDrive = WarmDrive,
             StudioCompressor = StudioCompressor,
             CharacterMode = CharacterMode
@@ -69,21 +77,31 @@ namespace NMS_Reader.Models
         {
             try
             {
-                if (File.Exists(ConfigPath))
+                string path = GetConfigPath();
+                if (File.Exists(path))
                 {
-                    string json = File.ReadAllText(ConfigPath);
-                    var cfg = JsonSerializer.Deserialize<AppConfig>(json);
+                    string json = File.ReadAllText(path);
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        ReadCommentHandling = JsonCommentHandling.Skip,
+                        AllowTrailingCommas = true
+                    };
+                    var cfg = JsonSerializer.Deserialize<AppConfig>(json, options);
                     if (cfg != null)
                     {
-                        cfg.XMinPercent = 10;
-                        cfg.XMaxPercent = 90;
+                        cfg.XMinPercent = 5;
+                        cfg.XMaxPercent = 95;
                         cfg.YMinPercent = 45;
                         cfg.YMaxPercent = 96;
                         return cfg;
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AppConfig] Load error: {ex}");
+            }
 
             var def = new AppConfig();
             def.Save();
@@ -94,11 +112,18 @@ namespace NMS_Reader.Models
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
                 string json = JsonSerializer.Serialize(this, options);
-                File.WriteAllText(ConfigPath, json);
+                File.WriteAllText(GetConfigPath(), json, new System.Text.UTF8Encoding(false));
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AppConfig] Save error: {ex}");
+            }
         }
     }
 }

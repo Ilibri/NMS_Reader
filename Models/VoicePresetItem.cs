@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace NMS_Reader.Models
 {
@@ -17,7 +17,6 @@ namespace NMS_Reader.Models
         public bool GekThroat { get; set; } = false;
         public bool WarmDrive { get; set; } = false;
         public bool MonolithChorus { get; set; } = false;
-        public bool VykeenRoar { get; set; } = false;
         public double NoiseScale { get; set; } = 0.67;
         public double SentenceSilence { get; set; } = 0.25;
 
@@ -38,7 +37,6 @@ namespace NMS_Reader.Models
                 GekThroat = GekThroat,
                 WarmDrive = WarmDrive,
                 MonolithChorus = MonolithChorus,
-                VykeenRoar = VykeenRoar,
                 NoiseScale = NoiseScale,
                 SentenceSilence = SentenceSilence
             };

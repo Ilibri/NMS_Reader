@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 namespace NMS_Reader.Services
@@ -15,7 +15,6 @@ namespace NMS_Reader.Services
         public bool ExosuitRadio { get; set; } = false; // helmet radio bandpass filter
         public bool GekThroat { get; set; } = false;    // frog/toad throat resonance & flutter (Gek)
         public bool MonolithChorus { get; set; } = false;// telepathic detuned entity chorus (S.T.A.L.K.E.R. Monolith)
-        public bool VykeenRoar { get; set; } = false;   // prepends random authentic monster/warrior battle roar
         public bool WarmDrive { get; set; } = false;    // warm harmonic saturation (Vy'keen/Suit)
         public bool StudioCompressor { get; set; } = true; // speech clarity & density
         public string CharacterMode { get; set; } = "wanderer";
@@ -27,13 +26,14 @@ namespace NMS_Reader.Services
             ExosuitMix = 0.0;
             GekThroat = false;
             MonolithChorus = false;
-            VykeenRoar = false;
             WarmDrive = false;
             EchoWet = 0.0;
 
             switch (presetName?.ToLowerInvariant())
             {
                 case "suit_female":
+                case "женский голос":
+                case "женский":
                 case "женский шлем":
                 case "женский голос шлема":
                     CharacterMode = "wanderer";
@@ -48,6 +48,8 @@ namespace NMS_Reader.Services
                     break;
 
                 case "suit_male":
+                case "мужской голос":
+                case "мужской":
                 case "мужской шлем":
                 case "мужской голос шлема":
                     CharacterMode = "wanderer";
@@ -57,6 +59,34 @@ namespace NMS_Reader.Services
                     ExosuitRadio = false;
                     ExosuitMix = 0.0;
                     ReverbWet = 0.05;
+                    EchoWet = 0.0;
+                    break;
+
+                case "suit_miku":
+                case "мику":
+                case "хацунэ мику":
+                    CharacterMode = "suit_miku";
+                    PitchShift = 1.00;
+                    BassGainDb = 1.0;
+                    TrebleGainDb = 1.5;
+                    WarmDrive = false;
+                    ExosuitRadio = false;
+                    ExosuitMix = 0.15;
+                    ReverbWet = 0.03;
+                    EchoWet = 0.0;
+                    break;
+
+                case "suit_teto":
+                case "тето":
+                case "касане тето":
+                    CharacterMode = "suit_teto";
+                    PitchShift = 1.00;
+                    BassGainDb = 1.0;
+                    TrebleGainDb = 2.0;
+                    WarmDrive = false;
+                    ExosuitRadio = false;
+                    ExosuitMix = 0.15;
+                    ReverbWet = 0.03;
                     EchoWet = 0.0;
                     break;
 
@@ -83,7 +113,6 @@ namespace NMS_Reader.Services
                     ExosuitMix = 0.05;
                     ExosuitRadio = true;
                     WarmDrive = false;
-                    VykeenRoar = true;
                     ReverbWet = 0.05;
                     EchoWet = 0.0;
                     break;
@@ -254,13 +283,7 @@ namespace NMS_Reader.Services
                 samples = SmbPitchShift.Process((float)config.PitchShift, samples, sampleRate);
             }
 
-            // 8. Authentic Vy'keen Battle Roar Prepend
-            if (config.VykeenRoar)
-            {
-                samples = PrependVykeenRoar(samples, sampleRate);
-            }
-
-            // 9. Monolith Telepathic Detuned Chorus (S.T.A.L.K.E.R. Monolith Entity)
+            // 8. Monolith Telepathic Detuned Chorus (S.T.A.L.K.E.R. Monolith Entity)
             if (config.MonolithChorus)
             {
                 ApplyMonolithChorus(samples, sampleRate);
@@ -532,89 +555,6 @@ namespace NMS_Reader.Services
                 allpassIndices[1] = (apIdx1 + 1) % allpassDelays[1];
 
                 samples[i] = input * dry + apOut1 * wet;
-            }
-        }
-
-        private static readonly Random _rng = new Random();
-
-        private static float[] PrependVykeenRoar(float[] speechSamples, int sampleRate)
-        {
-            try
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string dir = Path.Combine(baseDir, "Voices", "Vykeen");
-                if (!Directory.Exists(dir))
-                {
-                    dir = Path.Combine(Directory.GetCurrentDirectory(), "Voices", "Vykeen");
-                }
-                if (!Directory.Exists(dir)) return speechSamples;
-
-                var files = Directory.GetFiles(dir, "roar_*.wav");
-                if (files.Length == 0) return speechSamples;
-
-                string chosenFile = files[_rng.Next(files.Length)];
-                byte[] roarBytes = File.ReadAllBytes(chosenFile);
-                if (roarBytes.Length <= 44) return speechSamples;
-
-                int headerOffset = -1;
-                for (int i = 12; i < roarBytes.Length - 8; i++)
-                {
-                    if (roarBytes[i] == 'd' && roarBytes[i + 1] == 'a' && roarBytes[i + 2] == 't' && roarBytes[i + 3] == 'a')
-                    {
-                        headerOffset = i + 8;
-                        break;
-                    }
-                }
-                if (headerOffset < 0 || headerOffset >= roarBytes.Length) return speechSamples;
-
-                int numRoarSamples = (roarBytes.Length - headerOffset) / 2;
-                if (numRoarSamples <= 0) return speechSamples;
-
-                int roarSampleRate = BitConverter.ToInt32(roarBytes, 24);
-                if (roarSampleRate <= 0) roarSampleRate = 22050;
-
-                float[] roarSamples;
-                if (roarSampleRate == sampleRate)
-                {
-                    roarSamples = new float[numRoarSamples];
-                    for (int i = 0; i < numRoarSamples; i++)
-                    {
-                        short val = BitConverter.ToInt16(roarBytes, headerOffset + i * 2);
-                        roarSamples[i] = val / 32768.0f;
-                    }
-                }
-                else
-                {
-                    int targetLength = (int)((long)numRoarSamples * sampleRate / roarSampleRate);
-                    roarSamples = new float[targetLength];
-                    double ratio = (double)numRoarSamples / targetLength;
-                    for (int i = 0; i < targetLength; i++)
-                    {
-                        double srcIdx = i * ratio;
-                        int idx0 = (int)srcIdx;
-                        int idx1 = Math.Min(idx0 + 1, numRoarSamples - 1);
-                        double frac = srcIdx - idx0;
-
-                        short s0 = BitConverter.ToInt16(roarBytes, headerOffset + idx0 * 2);
-                        short s1 = BitConverter.ToInt16(roarBytes, headerOffset + idx1 * 2);
-                        float f0 = s0 / 32768.0f;
-                        float f1 = s1 / 32768.0f;
-                        roarSamples[i] = (float)(f0 + (f1 - f0) * frac);
-                    }
-                }
-
-                // Add brief natural pause between the battle roar and the speech (0.10s)
-                int pauseSamples = (int)(sampleRate * 0.10);
-                float[] combined = new float[roarSamples.Length + pauseSamples + speechSamples.Length];
-
-                Array.Copy(roarSamples, 0, combined, 0, roarSamples.Length);
-                Array.Copy(speechSamples, 0, combined, roarSamples.Length + pauseSamples, speechSamples.Length);
-
-                return combined;
-            }
-            catch
-            {
-                return speechSamples;
             }
         }
     }

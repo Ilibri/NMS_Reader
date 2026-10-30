@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,7 +10,17 @@ namespace NMS_Reader.Services
     public static class VoiceProfileManager
     {
         public const string FactoryProfileId = "factory_default";
-        private static readonly string ProfilesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "profiles.json");
+
+        public static string GetProfilesPath()
+        {
+            string p1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "profiles.json");
+            if (File.Exists(p1)) return p1;
+            string p2 = Path.Combine(Directory.GetCurrentDirectory(), "profiles.json");
+            if (File.Exists(p2)) return p2;
+            string p3 = Path.Combine(AppContext.BaseDirectory, "profiles.json");
+            if (File.Exists(p3)) return p3;
+            return p1;
+        }
 
         public static VoiceProfile GetFactoryProfile()
         {
@@ -24,7 +34,7 @@ namespace NMS_Reader.Services
                     ["suit_female"] = new VoicePresetItem
                     {
                         CharacterKey = "suit_female",
-                        DisplayName = "Женский шлем",
+                        DisplayName = "Женский голос",
                         VoiceModel = "irina",
                         SpeakingRate = 1.00,
                         PitchShift = 1.00,
@@ -39,7 +49,7 @@ namespace NMS_Reader.Services
                     ["suit_male"] = new VoicePresetItem
                     {
                         CharacterKey = "suit_male",
-                        DisplayName = "Мужской шлем",
+                        DisplayName = "Мужской голос",
                         VoiceModel = "ruslan",
                         SpeakingRate = 1.00,
                         PitchShift = 1.00,
@@ -82,16 +92,15 @@ namespace NMS_Reader.Services
                     {
                         CharacterKey = "vykeen",
                         DisplayName = "Воин Вай'кин",
-                        VoiceModel = "denis",
-                        SpeakingRate = 1.30,
-                        PitchShift = 0.80,
+                        VoiceModel = "pavel",
+                        SpeakingRate = 1.00,
+                        PitchShift = 0.78,
                         BassGainDb = 10.0,
                         TrebleGainDb = 7.0,
                         ReverbWet = 0.05,
                         ExosuitMix = 0.05,
-                        VykeenRoar = true,
                         NoiseScale = 0.90,
-                        SentenceSilence = 0.20
+                        SentenceSilence = 0.30
                     },
                     ["wanderer"] = new VoicePresetItem
                     {
@@ -126,15 +135,18 @@ namespace NMS_Reader.Services
                     {
                         CharacterKey = "monolith",
                         DisplayName = "Монолит Атласа",
-                        VoiceModel = "denis",
+                        VoiceModel = "irina",
                         SpeakingRate = 0.90,
-                        PitchShift = 0.74,
-                        BassGainDb = 2.0,
+                        PitchShift = 0.70,
+                        BassGainDb = -6.0,
                         TrebleGainDb = 10.0,
-                        CyberEffect = true,
-                        ReverbWet = 0.40,
-                        NoiseScale = 0.20,
-                        SentenceSilence = 0.40
+                        ReverbWet = 0.20,
+                        ExosuitMix = 0.05,
+                        CyberEffect = false,
+                        GekThroat = false,
+                        WarmDrive = false,
+                        NoiseScale = 0.50,
+                        SentenceSilence = 0.20
                     }
                 }
             };
@@ -147,33 +159,62 @@ namespace NMS_Reader.Services
 
             try
             {
-                if (File.Exists(ProfilesPath))
+                string path = GetProfilesPath();
+                if (File.Exists(path))
                 {
-                    string json = File.ReadAllText(ProfilesPath);
-                    var customList = JsonSerializer.Deserialize<List<VoiceProfile>>(json);
-                    if (customList != null)
+                    string json = File.ReadAllText(path);
+                    if (!string.IsNullOrWhiteSpace(json))
                     {
-                        foreach (var p in customList)
+                        var options = new JsonSerializerOptions
                         {
-                            if (!string.IsNullOrWhiteSpace(p.Id) && p.Id != FactoryProfileId)
+                            PropertyNameCaseInsensitive = true,
+                            ReadCommentHandling = JsonCommentHandling.Skip,
+                            AllowTrailingCommas = true
+                        };
+
+                        List<VoiceProfile>? customList = null;
+
+                        using var doc = JsonDocument.Parse(json);
+                        if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                        {
+                            customList = JsonSerializer.Deserialize<List<VoiceProfile>>(json, options);
+                        }
+                        else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                        {
+                            var single = JsonSerializer.Deserialize<VoiceProfile>(json, options);
+                            if (single != null)
                             {
-                                p.IsFactory = false;
-                                // Make sure all default characters exist in the profile
-                                var factory = GetFactoryProfile();
-                                foreach (var kvp in factory.Presets)
+                                customList = new List<VoiceProfile> { single };
+                            }
+                        }
+
+                        if (customList != null)
+                        {
+                            foreach (var p in customList)
+                            {
+                                if (!string.IsNullOrWhiteSpace(p.Id) && p.Id != FactoryProfileId)
                                 {
-                                    if (!p.Presets.ContainsKey(kvp.Key))
+                                    p.IsFactory = false;
+                                    // Make sure all default characters exist in the profile
+                                    var factory = GetFactoryProfile();
+                                    foreach (var kvp in factory.Presets)
                                     {
-                                        p.Presets[kvp.Key] = kvp.Value.Clone();
+                                        if (!p.Presets.ContainsKey(kvp.Key))
+                                        {
+                                            p.Presets[kvp.Key] = kvp.Value.Clone();
+                                        }
                                     }
+                                    list.Add(p);
                                 }
-                                list.Add(p);
                             }
                         }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VoiceProfileManager] Load error: {ex}");
+            }
 
             return list;
         }
@@ -183,11 +224,18 @@ namespace NMS_Reader.Services
             try
             {
                 var customProfiles = profiles.Where(p => !p.IsFactory).ToList();
-                var options = new JsonSerializerOptions { WriteIndented = true };
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
                 string json = JsonSerializer.Serialize(customProfiles, options);
-                File.WriteAllText(ProfilesPath, json);
+                File.WriteAllText(GetProfilesPath(), json, new System.Text.UTF8Encoding(false));
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VoiceProfileManager] Save error: {ex}");
+            }
         }
     }
 }

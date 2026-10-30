@@ -24,6 +24,7 @@ namespace NMS_Reader
         private List<VoiceProfile> _profiles = new();
         private VoiceProfile _activeProfile = null!;
         private string _currentPresetKey = "suit_male";
+        private CancellationTokenSource? _activePlaybackCts;
 
         public MainWindow()
         {
@@ -48,9 +49,12 @@ namespace NMS_Reader
 
             // 0. Initialize Sound Profiles
             _profiles = VoiceProfileManager.LoadProfiles();
-            _activeProfile = _profiles.FirstOrDefault(p => p.Id == _config.ActiveProfileId) ?? _profiles[0];
+            _activeProfile = _profiles.FirstOrDefault(p => p.Id == _config.ActiveProfileId)
+                             ?? _profiles.FirstOrDefault(p => !p.IsFactory)
+                             ?? _profiles[0];
             ProfileComboBox.ItemsSource = _profiles;
             ProfileComboBox.SelectedItem = _activeProfile;
+            _config.ActiveProfileId = _activeProfile.Id;
             UpdateProfileBadge();
 
             // 1. Bind Voices
@@ -93,7 +97,6 @@ namespace NMS_Reader
             CyberCheck.IsChecked = _config.CyberEffect;
             GekCheck.IsChecked = _config.GekThroat;
             WarmDriveCheck.IsChecked = _config.WarmDrive;
-            VykeenRoarCheck.IsChecked = _config.VykeenRoar;
 
             SkipTitleCheck.IsChecked = _config.SkipTitle;
             SkipChoicesCheck.IsChecked = _config.SkipChoices;
@@ -111,6 +114,105 @@ namespace NMS_Reader
                 {
                     LogTimestamp.Text = $"Запись от {DateTime.Now:HH:mm:ss}";
                     LoreTextBox.Text = dialogueText;
+                });
+            };
+
+            _autoDetect.OnDialogueSegmentsDetected += (segments) =>
+            {
+                Dispatcher.Invoke(async () =>
+                {
+                    if (segments == null || segments.Count == 0) return;
+                    string fullText = string.Join(" ", segments.Select(s => s.Text));
+                    if (_autoDetect.HasDialogueClosedOrSkipped(fullText))
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        _activePlaybackCts?.Cancel();
+                        _activePlaybackCts?.Dispose();
+                    }
+                    catch { }
+                    _activePlaybackCts = new CancellationTokenSource();
+                    var token = _activePlaybackCts.Token;
+
+                    LogTimestamp.Text = $"Запись от {DateTime.Now:HH:mm:ss}";
+                    LoreTextBox.Text = string.Join("\n\n", segments.Select(s => s.Text));
+
+                    for (int i = 0; i < segments.Count; i++)
+                    {
+                        if (token.IsCancellationRequested) break;
+                        var seg = segments[i];
+                        if (string.IsNullOrWhiteSpace(seg.Text)) continue;
+                        if (_autoDetect.HasDialogueClosedOrSkipped(fullText)) break;
+
+                        string presetKey = seg.Race switch
+                        {
+                            "gek" => "gek",
+                            "vykeen" => "vykeen",
+                            "korvax" => "korvax",
+                            _ => !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male"
+                        };
+
+                        LoadCharacterFromProfile(presetKey);
+
+                        string raceLabel = seg.Race switch
+                        {
+                            "gek" => "🐸 Гек (зеленый текст)",
+                            "vykeen" => "⚔️ Вай'кин (красный текст)",
+                            "korvax" => "🤖 Корвакс (сиреневый текст)",
+                            _ => presetKey switch
+                            {
+                                "suit_female" => "👩 Мысли Главного Героя (Женский)",
+                                "suit_male" => "👨 Мысли Главного Героя (Мужской)",
+                                "gek" => "🐸 Мысли Главного Героя (Гек)",
+                                "korvax" => "🤖 Мысли Главного Героя (Корвакс)",
+                                "vykeen" => "⚔️ Мысли Главного Героя (Вай'кин)",
+                                _ => $"🎭 Мысли Главного Героя ({presetKey})"
+                            }
+                        };
+                        SetStatus($"Чтение: {raceLabel}", "busy");
+
+                        string spokenText = CharacterStylizer.Stylize(seg.Text, _config.CharacterMode);
+
+                        var tcs = new TaskCompletionSource<bool>();
+                        using (token.Register(() => tcs.TrySetCanceled()))
+                        {
+                            await _speechService.SpeakAsync(spokenText, _config.SpeakingRate, _config.GetAudioEffectsConfig(), () =>
+                            {
+                                tcs.TrySetResult(true);
+                            }, _config.NoiseScale, _config.SentenceSilence);
+
+                            try
+                            {
+                                await tcs.Task;
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                break;
+                            }
+                        }
+
+                        if (token.IsCancellationRequested) break;
+                        if (i < segments.Count - 1)
+                        {
+                            try
+                            {
+                                await Task.Delay(180, token);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!token.IsCancellationRequested)
+                    {
+                        _autoDetect.Arm(9000);
+                        SetStatus("Диалог активен (ожидание)", "busy");
+                    }
                 });
             };
 
@@ -146,7 +248,7 @@ namespace NMS_Reader
                     _autoDetect.Arm(6000);
                     TriggerScan();
                 });
-                _hotkeyService.OnStopHotkeyPressed += () => Dispatcher.Invoke(ToggleOrStopSpeech);
+                _hotkeyService.OnStopHotkeyPressed += () => Dispatcher.Invoke(HardStopSpeech);
             }
             catch (Exception ex)
             {
@@ -164,42 +266,60 @@ namespace NMS_Reader
                 SetStatus("Авто-режим отключен", "ready");
             }
 
-            // 7. Update initial active preset button & header highlight
-            _currentPresetKey = !string.IsNullOrEmpty(_config.ActivePresetKey) ? _config.ActivePresetKey : "suit_female";
-            UpdateActivePresetHighlight(_currentPresetKey);
+            // 7. Update initial active preset button & load preset from active profile
+            _currentPresetKey = !string.IsNullOrEmpty(_config.ProtagonistPresetKey)
+                ? _config.ProtagonistPresetKey
+                : (!string.IsNullOrEmpty(_config.ActivePresetKey) ? _config.ActivePresetKey : "suit_male");
+            LoadCharacterFromProfile(_currentPresetKey);
+            UpdateHeroCardVisuals();
 
-            // 8. Play female exosuit startup announcement
+            // 8. Play default protagonist exosuit startup announcement
             _ = Task.Run(async () =>
             {
                 await Task.Delay(350);
-                var suitFemaleEffects = new AudioEffectsConfig
-                {
-                    PitchShift = 1.00,
-                    BassGainDb = 2.0,
-                    TrebleGainDb = 2.0,
-                    WarmDrive = true,
-                    ExosuitRadio = true,
-                    ExosuitMix = 0.40,
-                    ReverbWet = 0.0,
-                    EchoWet = 0.0
-                };
+                bool isMale = _config.ProtagonistPresetKey == "suit_male" || _config.ActivePresetKey == "suit_male";
+                var suitEffects = isMale
+                    ? new AudioEffectsConfig
+                    {
+                        PitchShift = 1.00,
+                        BassGainDb = 3.0,
+                        TrebleGainDb = 2.0,
+                        ReverbWet = 0.05,
+                        ExosuitMix = 0.0,
+                        EchoWet = 0.0
+                    }
+                    : new AudioEffectsConfig
+                    {
+                        PitchShift = 1.00,
+                        BassGainDb = 2.0,
+                        TrebleGainDb = 2.0,
+                        WarmDrive = true,
+                        ExosuitRadio = true,
+                        ExosuitMix = 0.40,
+                        ReverbWet = 0.0,
+                        EchoWet = 0.0
+                    };
 
-                var irinaVoice = _speechService.Voices.FirstOrDefault(v => v.Id.Equals("irina", StringComparison.OrdinalIgnoreCase));
+                var suitVoice = isMale
+                    ? (_speechService.Voices.FirstOrDefault(v => v.Id.Equals("ruslan", StringComparison.OrdinalIgnoreCase)) ?? _speechService.CurrentVoice)
+                    : (_speechService.Voices.FirstOrDefault(v => v.Id.Equals("irina", StringComparison.OrdinalIgnoreCase)) ?? _speechService.CurrentVoice);
                 var savedVoice = _speechService.CurrentVoice;
 
-                if (irinaVoice != null)
+                if (suitVoice != null)
                 {
-                    _speechService.SetVoice(irinaVoice);
+                    _speechService.SetVoice(suitVoice);
                 }
 
-                string greeting = "Системы экзокостюма активированы. Готова к исследованию.";
-                await _speechService.SpeakAsync(greeting, 1.00, suitFemaleEffects, () =>
+                string greeting = isMale
+                    ? "Системы экзокостюма активированы. Готов к исследованию."
+                    : "Системы экзокостюма активированы. Готова к исследованию.";
+                await _speechService.SpeakAsync(greeting, 1.00, suitEffects, () =>
                 {
                     if (savedVoice != null)
                     {
                         _speechService.SetVoice(savedVoice);
                     }
-                }, 0.68, 0.40);
+                }, isMale ? 0.65 : 0.68, 0.40);
             });
         }
 
@@ -208,7 +328,7 @@ namespace NMS_Reader
             if (e.Key == Key.F3)
             {
                 e.Handled = true;
-                ToggleOrStopSpeech();
+                HardStopSpeech();
             }
             else if (e.Key == Key.F4)
             {
@@ -281,26 +401,73 @@ namespace NMS_Reader
             {
                 var t0 = DateTime.Now;
                 using var bmp = _ocrService.CaptureScreen(fullscreen: false, _config);
-                var rawLines = await _ocrService.RecognizeFromBitmapAsync(bmp, _config.SkipChoices);
-
-                string cleaned = NmsTextCleaner.Clean(rawLines, _config.SkipTitle, _config.SkipChoices);
+                var segments = await _ocrService.RecognizeDialogueSegmentsAsync(bmp, _config.SkipTitle, _config.SkipChoices);
                 var elapsed = (DateTime.Now - t0).TotalSeconds;
 
-                if (string.IsNullOrWhiteSpace(cleaned))
+                if (segments.Count == 0)
                 {
-                    SetStatus("Текст не найден", "ready");
-                    return;
+                    var rawLines = await _ocrService.RecognizeFromBitmapAsync(bmp, _config.SkipChoices);
+                    string cleaned = NmsTextCleaner.Clean(rawLines, _config.SkipTitle, _config.SkipChoices);
+                    if (string.IsNullOrWhiteSpace(cleaned))
+                    {
+                        SetStatus("Текст не найден", "ready");
+                        return;
+                    }
+
+                    string textForHint = (rawLines.Count > 0 ? rawLines[0] + " " : "") + cleaned;
+                    string detectedRace = _ocrService.DetectRaceFromBitmap(bmp, textForHint);
+                    segments.Add(new DialogueSegment(detectedRace, cleaned));
                 }
 
-                SetStatus($"Чтение ({elapsed:F2} с)", "busy");
                 LogTimestamp.Text = $"Запись от {DateTime.Now:HH:mm:ss}";
-                LoreTextBox.Text = cleaned;
+                LoreTextBox.Text = string.Join("\n\n", segments.Select(s => s.Text));
 
-                string spokenText = CharacterStylizer.Stylize(cleaned, _config.CharacterMode);
-                await _speechService.SpeakAsync(spokenText, _config.SpeakingRate, _config.GetAudioEffectsConfig(), () =>
+                for (int i = 0; i < segments.Count; i++)
                 {
-                    SetStatus("Готов к чтению", "ready");
-                }, _config.NoiseScale, _config.SentenceSilence);
+                    var seg = segments[i];
+                    if (string.IsNullOrWhiteSpace(seg.Text)) continue;
+
+                    string presetKey = seg.Race switch
+                    {
+                        "gek" => "gek",
+                        "vykeen" => "vykeen",
+                        "korvax" => "korvax",
+                        _ => !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male"
+                    };
+
+                    LoadCharacterFromProfile(presetKey);
+
+                    string raceLabel = seg.Race switch
+                    {
+                        "gek" => "🐸 Гек (зеленый текст)",
+                        "vykeen" => "⚔️ Вай'кин (красный текст)",
+                        "korvax" => "🤖 Корвакс (сиреневый текст)",
+                        _ => presetKey switch
+                        {
+                            "suit_female" => "👩 Мысли Главного Героя (Женский)",
+                            "suit_male" => "👨 Мысли Главного Героя (Мужской)",
+                            _ => $"🎭 Мысли Главного Героя ({presetKey})"
+                        }
+                    };
+                    SetStatus($"Чтение ({elapsed:F2} с): {raceLabel}", "busy");
+
+                    string spokenText = CharacterStylizer.Stylize(seg.Text, _config.CharacterMode);
+
+                    var tcs = new TaskCompletionSource<bool>();
+                    await _speechService.SpeakAsync(spokenText, _config.SpeakingRate, _config.GetAudioEffectsConfig(), () =>
+                    {
+                        tcs.TrySetResult(true);
+                    }, _config.NoiseScale, _config.SentenceSilence);
+
+                    await tcs.Task;
+
+                    if (i < segments.Count - 1)
+                    {
+                        await Task.Delay(180);
+                    }
+                }
+
+                SetStatus("Готов к чтению", "ready");
             }
             catch (Exception ex)
             {
@@ -312,25 +479,24 @@ namespace NMS_Reader
             }
         }
 
-        private void ToggleOrStopSpeech()
+        private void HardStopSpeech()
         {
-            if (_speechService.IsSpeaking)
+            try
             {
-                _speechService.Stop();
-                _autoDetect.SuppressCurrentDialogue();
-                SetStatus("Озвучка остановлена (F3)", "ready");
+                _activePlaybackCts?.Cancel();
+                _activePlaybackCts?.Dispose();
             }
-            else
-            {
-                _autoDetect.ResetSuppression();
-                _autoDetect.Arm(6000);
-                TriggerScan();
-            }
+            catch { }
+            _activePlaybackCts = null;
+
+            _speechService.Stop();
+            _autoDetect.SuppressCurrentDialogue();
+            SetStatus("Озвучка остановлена (F3)", "ready");
         }
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
-            ToggleOrStopSpeech();
+            HardStopSpeech();
         }
 
         private void BtnManualScan_Click(object sender, RoutedEventArgs e)
@@ -350,7 +516,15 @@ namespace NMS_Reader
 
             SetStatus("Воспроизведение теста...", "busy");
             string testPhrase;
-            if (_config.CharacterMode == "artemis")
+            if (_config.CharacterMode == "suit_miku")
+            {
+                testPhrase = "Голос Хацунэ Мику подключен для Главного Героя. Все системы в норме!";
+            }
+            else if (_config.CharacterMode == "suit_teto")
+            {
+                testPhrase = "Касане Тето на связи. Готова озвучивать мысли Главного Героя!";
+            }
+            else if (_config.CharacterMode == "artemis")
             {
                 testPhrase = "Ты меня слышишь?.. Мой передатчик едва ловит сигнал. Пожалуйста, не уходи, ответь мне...";
             }
@@ -362,7 +536,7 @@ namespace NMS_Reader
             {
                 testPhrase = _config.VoiceModel == "irina"
                     ? "Системы жизнеобеспечения в норме. Кольца местной луны зафиксированы на сканере."
-                    : "Внеземной артефакт обнаружен. Системы экзокостюма в норме.";
+                    : "Внеземной артефакт обнаружен. Направляюсь к точке сигнала.";
             }
             else if (_config.CyberEffect && _config.ReverbWet < 0.25)
             {
@@ -372,7 +546,7 @@ namespace NMS_Reader
             {
                 testPhrase = "Твоя цель здесь... Иди ко мне...";
             }
-            else if (_config.VykeenRoar || _config.CharacterMode == "vykeen" || (_config.BassGainDb > 5.0 && _config.TrebleGainDb > 3.0))
+            else if (_config.CharacterMode == "vykeen" || (_config.BassGainDb > 5.0 && _config.TrebleGainDb > 3.0))
             {
                 testPhrase = "Грах! Смерть стражам! Покажи мне свою силу, презренный нарушитель!";
             }
@@ -389,10 +563,185 @@ namespace NMS_Reader
             }, _config.NoiseScale, _config.SentenceSilence);
         }
 
-        // --- PRESETS ---
+        // --- PRESETS & DRAG-AND-DROP ASSIGNMENT ---
 
-        private void PresetSuitFemale_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("suit_female");
-        private void PresetSuitMale_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("suit_male");
+        private Point _dragStartPoint;
+
+        private void PresetBtn_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+        }
+
+        private void PresetBtn_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed && sender is Button btn && btn.Tag is string key)
+            {
+                Point currentPos = e.GetPosition(null);
+                Vector diff = _dragStartPoint - currentPos;
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    DragDrop.DoDragDrop(btn, key, DragDropEffects.Copy);
+                }
+            }
+        }
+
+        private void HeroSlot_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.StringFormat) && HeroVoiceCard != null)
+            {
+                e.Effects = DragDropEffects.Copy;
+                HeroVoiceCard.BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248)); // #38bdf8 Glowing cyan
+                HeroVoiceCard.Background = new SolidColorBrush(Color.FromRgb(30, 58, 138));  // #1e3a8a Active blue
+            }
+        }
+
+        private void HeroSlot_DragLeave(object sender, DragEventArgs e)
+        {
+            UpdateHeroCardVisuals();
+        }
+
+        private void HeroSlot_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.StringFormat))
+            {
+                string? key = e.Data.GetData(DataFormats.StringFormat) as string;
+                if (!string.IsNullOrEmpty(key))
+                {
+                    AssignProtagonistVoice(key);
+                }
+            }
+            UpdateHeroCardVisuals();
+        }
+
+        private void HeroVoiceCard_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(_currentPresetKey) && _currentPresetKey != _config.ProtagonistPresetKey)
+            {
+                AssignProtagonistVoice(_currentPresetKey);
+            }
+            else
+            {
+                string nextKey = _config.ProtagonistPresetKey switch
+                {
+                    "suit_female" => "suit_male",
+                    "suit_male" => "gek",
+                    "gek" => "korvax",
+                    "korvax" => "vykeen",
+                    "vykeen" => "wanderer",
+                    "wanderer" => "artemis",
+                    "artemis" => "monolith",
+                    _ => "suit_female"
+                };
+                AssignProtagonistVoice(nextKey);
+            }
+        }
+
+        public void AssignProtagonistVoice(string key)
+        {
+            _config.ProtagonistPresetKey = key;
+            _config.Save();
+            LoadCharacterFromProfile(key);
+            UpdateHeroCardVisuals();
+            string name = GetVoiceDisplayName(key);
+            SetStatus($"Главный герой озвучивается: {name}", "ready");
+        }
+
+        private string GetVoiceDisplayName(string key) => key switch
+        {
+            "suit_female" => "👩 Женский голос (Ирина)",
+            "suit_male" => "👨 Мужской голос (Руслан)",
+            "gek" => "🐸 Торговец Гек",
+            "korvax" => "🤖 Корвакс",
+            "vykeen" => "⚔️ Воин Вай'кин",
+            "wanderer" => "🌌 Раса Странников",
+            "artemis" => "🛰️ Артемида",
+            "monolith" => "🌌 Монолит Атласа",
+            _ => key
+        };
+
+        private void UpdateHeroCardVisuals()
+        {
+            if (HeroVoiceCard == null || HeroVoiceEmoji == null || HeroVoiceTitle == null) return;
+
+            string key = !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male";
+
+            string emoji = "👩";
+            string title = "Женский голос (Ирина)";
+            string sub = "● Читает белый текст и мысли";
+            Color borderColor = Color.FromRgb(16, 185, 129); // #10b981 Emerald
+            Color bgColor = Color.FromRgb(15, 23, 42);      // #0f172a
+
+            switch (key)
+            {
+                case "suit_female":
+                    emoji = "👩";
+                    title = "Женский голос (Ирина)";
+                    sub = "● Озвучивает мысли героя (Ирина)";
+                    borderColor = Color.FromRgb(16, 185, 129); // Emerald
+                    bgColor = Color.FromRgb(15, 23, 42);
+                    break;
+                case "suit_male":
+                    emoji = "👨";
+                    title = "Мужской голос (Руслан)";
+                    sub = "● Озвучивает мысли героя (Руслан)";
+                    borderColor = Color.FromRgb(59, 130, 246); // Blue
+                    bgColor = Color.FromRgb(15, 23, 42);
+                    break;
+                case "gek":
+                    emoji = "🐸";
+                    title = "Торговец Гек";
+                    sub = "● Читает мысли героя (Гек)";
+                    borderColor = Color.FromRgb(34, 197, 94); // Green
+                    bgColor = Color.FromRgb(12, 26, 18);
+                    break;
+                case "korvax":
+                    emoji = "🤖";
+                    title = "Корвакс";
+                    sub = "● Читает мысли героя (Кибер)";
+                    borderColor = Color.FromRgb(168, 85, 247); // Purple
+                    bgColor = Color.FromRgb(22, 16, 36);
+                    break;
+                case "vykeen":
+                    emoji = "⚔️";
+                    title = "Воин Вай'кин";
+                    sub = "● Читает мысли героя (Бас)";
+                    borderColor = Color.FromRgb(239, 68, 68); // Red
+                    bgColor = Color.FromRgb(30, 14, 16);
+                    break;
+                case "wanderer":
+                    emoji = "🌌";
+                    title = "Раса Странников";
+                    sub = "● Читает мысли героя (Странник)";
+                    borderColor = Color.FromRgb(14, 165, 233);
+                    bgColor = Color.FromRgb(15, 23, 42);
+                    break;
+                case "artemis":
+                    emoji = "🛰️";
+                    title = "Артемида";
+                    sub = "● Читает мысли героя (Артемида)";
+                    borderColor = Color.FromRgb(234, 179, 8);
+                    bgColor = Color.FromRgb(26, 24, 14);
+                    break;
+                case "monolith":
+                    emoji = "🌌";
+                    title = "Монолит Атласа";
+                    sub = "● Читает мысли героя (Атлас)";
+                    borderColor = Color.FromRgb(139, 92, 246);
+                    bgColor = Color.FromRgb(20, 16, 34);
+                    break;
+            }
+
+            HeroVoiceEmoji.Text = emoji;
+            HeroVoiceTitle.Text = title;
+            HeroVoiceSub.Text = sub;
+            HeroVoiceCard.BorderBrush = new SolidColorBrush(borderColor);
+            HeroVoiceCard.Background = new SolidColorBrush(bgColor);
+        }
+
+        private void PresetSuitFemale_Click(object sender, RoutedEventArgs e) => AssignProtagonistVoice("suit_female");
+        private void PresetSuitMale_Click(object sender, RoutedEventArgs e) => AssignProtagonistVoice("suit_male");
+
         private void PresetGek_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("gek");
         private void PresetKorvax_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("korvax");
         private void PresetVykeen_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("vykeen");
@@ -413,7 +762,7 @@ namespace NMS_Reader
                 SetPreset(preset.CharacterKey, preset.VoiceModel, preset.SpeakingRate, preset.PitchShift,
                           preset.BassGainDb, preset.TrebleGainDb, preset.ReverbWet, preset.ExosuitMix,
                           preset.CyberEffect, preset.GekThroat, preset.WarmDrive, preset.MonolithChorus,
-                          preset.NoiseScale, preset.SentenceSilence, preset.VykeenRoar);
+                          preset.NoiseScale, preset.SentenceSilence);
                 UpdateActivePresetHighlight(characterKey);
             }
         }
@@ -489,10 +838,17 @@ namespace NMS_Reader
                 return;
             }
 
+            string dName = _currentPresetKey switch
+            {
+                "suit_female" => "Женский голос",
+                "suit_male" => "Мужской голос",
+                _ => _currentPresetKey
+            };
+
             var item = new VoicePresetItem
             {
                 CharacterKey = _currentPresetKey,
-                DisplayName = _currentPresetKey,
+                DisplayName = dName,
                 VoiceModel = _config.VoiceModel,
                 SpeakingRate = _config.SpeakingRate,
                 PitchShift = _config.PitchShift,
@@ -504,13 +860,14 @@ namespace NMS_Reader
                 GekThroat = _config.GekThroat,
                 WarmDrive = _config.WarmDrive,
                 MonolithChorus = _config.MonolithChorus,
-                VykeenRoar = _config.VykeenRoar,
                 NoiseScale = _config.NoiseScale,
                 SentenceSilence = _config.SentenceSilence
             };
 
             _activeProfile.SetPreset(_currentPresetKey, item);
             VoiceProfileManager.SaveProfiles(_profiles);
+            _config.ActiveProfileId = _activeProfile.Id;
+            _config.Save();
             SetStatus($"Настройки сохранены в профиль «{_activeProfile.Name}»", "ready");
         }
 
@@ -561,7 +918,6 @@ namespace NMS_Reader
 
             if (isThoughts)
             {
-                // Green highlight for Thoughts / Suit header
                 ThoughtsHeader.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153)); // #34d399 Emerald green
                 ThoughtsHeader.FontWeight = FontWeights.Bold;
                 UniverseHeader.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // #94a3b8 Slate
@@ -611,7 +967,7 @@ namespace NMS_Reader
             }
         }
 
-        private void SetPreset(string charMode, string? preferredVoiceId, double rate, double pitch, double bass, double treble, double reverb, double exosuitMix, bool cyber, bool gekThroat, bool warmDrive, bool monolithChorus = false, double noise = 0.67, double silence = 0.25, bool vykeenRoar = false)
+        private void SetPreset(string charMode, string? preferredVoiceId, double rate, double pitch, double bass, double treble, double reverb, double exosuitMix, bool cyber, bool gekThroat, bool warmDrive, bool monolithChorus = false, double noise = 0.67, double silence = 0.25)
         {
             _isInitializing = true;
             _config.CharacterMode = charMode;
@@ -620,6 +976,8 @@ namespace NMS_Reader
             if (!string.IsNullOrEmpty(preferredVoiceId))
             {
                 var voice = _speechService.Voices.FirstOrDefault(v => v.Id.Equals(preferredVoiceId, StringComparison.OrdinalIgnoreCase))
+                            ?? _speechService.Voices.FirstOrDefault(v => v.Id.Contains(preferredVoiceId, StringComparison.OrdinalIgnoreCase))
+                            ?? _speechService.Voices.FirstOrDefault(v => v.DisplayName.Contains(preferredVoiceId, StringComparison.OrdinalIgnoreCase))
                             ?? _speechService.Voices.FirstOrDefault(v => v.Id.Equals("dmitri", StringComparison.OrdinalIgnoreCase));
                 if (voice != null)
                 {
@@ -674,9 +1032,6 @@ namespace NMS_Reader
             WarmDriveCheck.IsChecked = warmDrive;
             _config.WarmDrive = warmDrive;
             _config.MonolithChorus = monolithChorus;
-
-            VykeenRoarCheck.IsChecked = vykeenRoar;
-            _config.VykeenRoar = vykeenRoar;
 
             _isInitializing = false;
             _config.Save();
@@ -775,7 +1130,6 @@ namespace NMS_Reader
             _config.CyberEffect = CyberCheck.IsChecked ?? false;
             _config.GekThroat = GekCheck.IsChecked ?? false;
             _config.WarmDrive = WarmDriveCheck.IsChecked ?? false;
-            _config.VykeenRoar = VykeenRoarCheck.IsChecked ?? false;
             _config.Save();
         }
 
