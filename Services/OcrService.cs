@@ -424,6 +424,10 @@ namespace NMS_Reader.Services
             if (!string.IsNullOrWhiteSpace(textHint))
             {
                 string lower = textHint.ToLowerInvariant();
+                if (lower.Contains("нада") || lower.Contains("жрец нада"))
+                    return "nada";
+                if (lower.Contains("поло") || lower.Contains("специалист поло"))
+                    return "polo";
                 if (lower.Contains("аполлон") || lower.Contains("голограмма аполлона"))
                     return "apollo";
                 if (lower.Contains("- пусто -") || lower.Contains("-пусто-") || lower.Contains("первый странник"))
@@ -433,7 +437,7 @@ namespace NMS_Reader.Services
                 if (lower.Contains("монолит") || lower.Contains("атлас"))
                     return "monolith";
 
-                if (korvaxPixels >= 25 && (lower.Contains("корвакс") || lower.Contains("сущность") || lower.Contains("синтез") || lower.Contains("нада")))
+                if (korvaxPixels >= 25 && (lower.Contains("корвакс") || lower.Contains("сущность") || lower.Contains("синтез")))
                     return "korvax";
                 if (vykeenPixels >= 25 && (lower.Contains("вай'кин") || lower.Contains("вайкин") || lower.Contains("воин") || lower.Contains("грах")))
                     return "vykeen";

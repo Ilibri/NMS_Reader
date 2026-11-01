@@ -34,6 +34,16 @@ namespace NMS_Reader.Services
                 case "первый странник":
                     return StylizeNull(text);
 
+                case "nada":
+                case "нада":
+                case "жрец нада":
+                    return StylizeNada(text);
+
+                case "polo":
+                case "поло":
+                case "специалист поло":
+                    return StylizePolo(text);
+
                 default:
                     return text;
             }
@@ -51,6 +61,22 @@ namespace NMS_Reader.Services
         {
             // Clean whisper / echo markers: [эхо], [шепот душ], *тишина*
             string result = Regex.Replace(text, @"[\*\[\(](?:эхо|шепот|шепот\s+душ|тишина|пауза|помехи)[\*\]\)]", "", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\s{2,}", " ").Trim();
+            return result;
+        }
+
+        private static string StylizeNada(string text)
+        {
+            // Clean visor flicker and soft mechanical hum markers: [визор мерцает], *мягкий гул*, (электронный вздох)
+            string result = Regex.Replace(text, @"[\*\[\(](?:визор\s+)?(?:мерцает|мягкий\s+гул|гул|вздох|свечение)[\*\]\)]", "", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\s{2,}", " ").Trim();
+            return result;
+        }
+
+        private static string StylizePolo(string text)
+        {
+            // Clean friendly chirping and joy scent markers: [радостно], *щелкает клювом*, [феромоны радости]
+            string result = Regex.Replace(text, @"[\*\[\(](?:радостно|щелкает|чирикает|феромоны|смеется|улыбается)[\*\]\)]", "", RegexOptions.IgnoreCase);
             result = Regex.Replace(result, @"\s{2,}", " ").Trim();
             return result;
         }

@@ -156,6 +156,8 @@ namespace NMS_Reader
                             "korvax" => "korvax",
                             "apollo" => "apollo",
                             "null" => "null",
+                            "nada" => "nada",
+                            "polo" => "polo",
                             "artemis" => "artemis",
                             "monolith" => "monolith",
                             _ => !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male"
@@ -170,6 +172,8 @@ namespace NMS_Reader
                             "korvax" => "🤖 Корвакс (сиреневый текст)",
                             "apollo" => "🦾 Аполлон (голотерминал)",
                             "null" => "🔺 - пусто - (Первый Странник)",
+                            "nada" => "🔮 Жрец Нада (Аномалия)",
+                            "polo" => "🪐 Специалист Поло (Аномалия)",
                             "artemis" => "🛰️ Артемида (сигнал связи)",
                             "monolith" => "🌌 Монолит (хор Атласа)",
                             _ => presetKey switch
@@ -181,6 +185,8 @@ namespace NMS_Reader
                                 "vykeen" => "⚔️ Мысли Главного Героя (Вай'кин)",
                                 "apollo" => "🦾 Мысли Главного Героя (Аполлон)",
                                 "null" => "🔺 Мысли Главного Героя (- пусто -)",
+                                "nada" => "🔮 Мысли Главного Героя (Нада)",
+                                "polo" => "🪐 Мысли Главного Героя (Поло)",
                                 "artemis" => "🛰️ Мысли Главного Героя (Артемида)",
                                 "monolith" => "🌌 Мысли Главного Героя (Монолит)",
                                 _ => $"🎭 Мысли Главного Героя ({presetKey})"
@@ -467,6 +473,8 @@ namespace NMS_Reader
                         "korvax" => "korvax",
                         "apollo" => "apollo",
                         "null" => "null",
+                        "nada" => "nada",
+                        "polo" => "polo",
                         "artemis" => "artemis",
                         "monolith" => "monolith",
                         _ => !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male"
@@ -481,6 +489,8 @@ namespace NMS_Reader
                         "korvax" => "🤖 Корвакс (сиреневый текст)",
                         "apollo" => "🦾 Аполлон (голотерминал)",
                         "null" => "🔺 - пусто - (Первый Странник)",
+                        "nada" => "🔮 Жрец Нада (Аномалия)",
+                        "polo" => "🪐 Специалист Поло (Аномалия)",
                         "artemis" => "🛰️ Артемида (сигнал связи)",
                         "monolith" => "🌌 Монолит (хор Атласа)",
                         _ => presetKey switch
@@ -492,6 +502,8 @@ namespace NMS_Reader
                             "vykeen" => "⚔️ Мысли Главного Героя (Вай'кин)",
                             "apollo" => "🦾 Мысли Главного Героя (Аполлон)",
                             "null" => "🔺 Мысли Главного Героя (- пусто -)",
+                            "nada" => "🔮 Мысли Главного Героя (Нада)",
+                            "polo" => "🪐 Мысли Главного Героя (Поло)",
                             "artemis" => "🛰️ Мысли Главного Героя (Артемида)",
                             "monolith" => "🌌 Мысли Главного Героя (Монолит)",
                             _ => $"🎭 Мысли Главного Героя ({presetKey})"
@@ -609,6 +621,14 @@ namespace NMS_Reader
             {
                 testPhrase = "Шестнадцать... Я помню каждый цикл, каждый чужой вздох, каждую украденную маску. Ты ищешь истину, странник?";
             }
+            else if (_config.CharacterMode == "nada")
+            {
+                testPhrase = "Здравствуй, путник. Здесь, в Аномалии, Атлас не видит нас. Ты в безопасности, друг-Странник.";
+            }
+            else if (_config.CharacterMode == "polo")
+            {
+                testPhrase = "Друг! Какие удивительные данные ты принес из дальних систем! Дай-ка мне взглянуть на твои чертежи!";
+            }
             else if (_config.GekThroat)
             {
                 testPhrase = "Друг! Торговец Гек рад тебя видеть! Приготовь наниты, у меня есть редкие технологии!";
@@ -713,7 +733,9 @@ namespace NMS_Reader
                     "wanderer" => "artemis",
                     "artemis" => "apollo",
                     "apollo" => "null",
-                    "null" => "monolith",
+                    "null" => "nada",
+                    "nada" => "polo",
+                    "polo" => "monolith",
                     "monolith" => "suit_female",
                     _ => "suit_female"
                 };
@@ -742,6 +764,8 @@ namespace NMS_Reader
             "artemis" => "🛰️ Артемида",
             "apollo" => "🦾 Аполлон",
             "null" => "🔺 - пусто -",
+            "nada" => "🔮 Жрец Нада",
+            "polo" => "🪐 Специалист Поло",
             "monolith" => "🌌 Монолит Атласа",
             _ => key
         };
@@ -823,6 +847,20 @@ namespace NMS_Reader
                     borderColor = Color.FromRgb(148, 163, 184); // Slate
                     bgColor = Color.FromRgb(20, 24, 33);
                     break;
+                case "nada":
+                    emoji = "🔮";
+                    title = "Жрец Нада";
+                    sub = "● Читает мысли героя (Нада)";
+                    borderColor = Color.FromRgb(129, 140, 248); // Indigo
+                    bgColor = Color.FromRgb(21, 24, 46);
+                    break;
+                case "polo":
+                    emoji = "🪐";
+                    title = "Специалист Поло";
+                    sub = "● Читает мысли героя (Поло)";
+                    borderColor = Color.FromRgb(45, 212, 191); // Teal
+                    bgColor = Color.FromRgb(14, 36, 34);
+                    break;
                 case "monolith":
                     emoji = "🌌";
                     title = "Монолит Атласа";
@@ -849,6 +887,8 @@ namespace NMS_Reader
         private void PresetArtemis_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("artemis");
         private void PresetApollo_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("apollo");
         private void PresetNull_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("null");
+        private void PresetNada_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("nada");
+        private void PresetPolo_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("polo");
         private void PresetMonolith_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("monolith");
 
         private void LoadCharacterFromProfile(string characterKey)
@@ -1006,7 +1046,7 @@ namespace NMS_Reader
             var normalFg = new SolidColorBrush(Color.FromRgb(226, 232, 240));    // #e2e8f0
             var normalThickness = new Thickness(1);
 
-            Button[] allButtons = { BtnSuitFemale, BtnSuitMale, BtnGek, BtnKorvax, BtnVykeen, BtnWanderer, BtnArtemis, BtnApollo, BtnNull, BtnMonolith };
+            Button[] allButtons = { BtnSuitFemale, BtnSuitMale, BtnGek, BtnKorvax, BtnVykeen, BtnWanderer, BtnArtemis, BtnApollo, BtnNull, BtnNada, BtnPolo, BtnMonolith };
             foreach (var b in allButtons)
             {
                 if (b == null) continue;
@@ -1057,6 +1097,8 @@ namespace NMS_Reader
                     "artemis" => BtnArtemis,
                     "apollo" => BtnApollo,
                     "null" => BtnNull,
+                    "nada" => BtnNada,
+                    "polo" => BtnPolo,
                     "monolith" => BtnMonolith,
                     _ => null
                 };

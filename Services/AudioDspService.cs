@@ -189,6 +189,38 @@ namespace NMS_Reader.Services
                     EchoWet = 0.08;
                     break;
 
+                case "nada":
+                case "нада":
+                case "жрец нада":
+                case "жрец-отступник":
+                    CharacterMode = "nada";
+                    PitchShift = 0.94;
+                    BassGainDb = 3.0;
+                    TrebleGainDb = 4.0;
+                    CyberEffect = true;
+                    WarmDrive = true;
+                    ExosuitMix = 0.20;
+                    ExosuitRadio = true;
+                    ReverbWet = 0.16;
+                    EchoWet = 0.0;
+                    break;
+
+                case "polo":
+                case "поло":
+                case "специалист поло":
+                case "друг поло":
+                    CharacterMode = "polo";
+                    PitchShift = 1.22;
+                    BassGainDb = -1.0;
+                    TrebleGainDb = 3.0;
+                    GekThroat = true;
+                    WarmDrive = true;
+                    ExosuitMix = 0.10;
+                    ExosuitRadio = false;
+                    ReverbWet = 0.05;
+                    EchoWet = 0.0;
+                    break;
+
                 case "wanderer":
                 case "странник":
                 case "раса странников":

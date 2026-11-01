@@ -164,6 +164,38 @@ namespace NMS_Reader.Services
                         NoiseScale = 0.50,
                         SentenceSilence = 0.45
                     },
+                    ["nada"] = new VoicePresetItem
+                    {
+                        CharacterKey = "nada",
+                        DisplayName = "Жрец Нада",
+                        VoiceModel = "irina",
+                        SpeakingRate = 0.98,
+                        PitchShift = 0.94,
+                        BassGainDb = 3.0,
+                        TrebleGainDb = 4.0,
+                        ReverbWet = 0.16,
+                        ExosuitMix = 0.20,
+                        CyberEffect = true,
+                        WarmDrive = true,
+                        NoiseScale = 0.70,
+                        SentenceSilence = 0.30
+                    },
+                    ["polo"] = new VoicePresetItem
+                    {
+                        CharacterKey = "polo",
+                        DisplayName = "Специалист Поло",
+                        VoiceModel = "dmitri",
+                        SpeakingRate = 1.14,
+                        PitchShift = 1.22,
+                        BassGainDb = -1.0,
+                        TrebleGainDb = 3.0,
+                        ReverbWet = 0.05,
+                        ExosuitMix = 0.10,
+                        GekThroat = true,
+                        WarmDrive = true,
+                        NoiseScale = 0.85,
+                        SentenceSilence = 0.18
+                    },
                     ["monolith"] = new VoicePresetItem
                     {
                         CharacterKey = "monolith",

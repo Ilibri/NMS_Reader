@@ -249,6 +249,12 @@
                         <Button x:Name="BtnNull" Tag="null" Content="🔺 - пусто -" Style="{StaticResource PresetBtn}" Click="PresetNull_Click" 
                                 PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
                                 ToolTip="Голос - пусто - (Первый Странник, хор душ). Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnNada" Tag="nada" Content="🔮 Жрец Нада" Style="{StaticResource PresetBtn}" Click="PresetNada_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос Жреца Нады (Корвакс-отступник, Аномалия). Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnPolo" Tag="polo" Content="🪐 Специалист Поло" Style="{StaticResource PresetBtn}" Click="PresetPolo_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос Специалиста Поло (Гек-ученый, Аномалия). Можно перетащить в слот Главного Героя!"/>
                         <Button x:Name="BtnMonolith" Tag="monolith" Content="🌌 Монолит Атласа" Style="{StaticResource PresetBtn}" Click="PresetMonolith_Click" 
                                 PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
                                 ToolTip="Загадочный хор Монолита. Можно перетащить в слот Главного Героя!"/>
