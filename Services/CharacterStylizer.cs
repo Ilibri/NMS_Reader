@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.RegularExpressions;
 
 namespace NMS_Reader.Services
@@ -22,9 +22,37 @@ namespace NMS_Reader.Services
                 case "странница артемида":
                     return StylizeArtemis(text);
 
+                case "apollo":
+                case "аполлон":
+                case "странник аполлон":
+                    return StylizeApollo(text);
+
+                case "null":
+                case "пусто":
+                case "-пусто-":
+                case "- пусто -":
+                case "первый странник":
+                    return StylizeNull(text);
+
                 default:
                     return text;
             }
+        }
+
+        private static string StylizeApollo(string text)
+        {
+            // Remove holoterminus transmission and static markers: [голограмма мерцает], *помехи терминала*, (треск)
+            string result = Regex.Replace(text, @"[\*\[\(](?:голограмма\s+)?(?:мерцает|помехи|треск|сигнал|связь|трансляция)[\*\]\)]", "", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\s{2,}", " ").Trim();
+            return result;
+        }
+
+        private static string StylizeNull(string text)
+        {
+            // Clean whisper / echo markers: [эхо], [шепот душ], *тишина*
+            string result = Regex.Replace(text, @"[\*\[\(](?:эхо|шепот|шепот\s+душ|тишина|пауза|помехи)[\*\]\)]", "", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"\s{2,}", " ").Trim();
+            return result;
         }
 
         private static string StylizeVykeen(string text)

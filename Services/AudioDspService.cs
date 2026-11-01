@@ -156,6 +156,39 @@ namespace NMS_Reader.Services
                     EchoWet = 0.0;
                     break;
 
+                case "apollo":
+                case "аполлон":
+                case "странник аполлон":
+                    CharacterMode = "apollo";
+                    PitchShift = 0.92;
+                    BassGainDb = 5.0;
+                    TrebleGainDb = 4.0;
+                    ExosuitMix = 0.30;
+                    ExosuitRadio = true;
+                    CyberEffect = true;
+                    WarmDrive = true;
+                    ReverbWet = 0.08;
+                    EchoWet = 0.0;
+                    break;
+
+                case "null":
+                case "пусто":
+                case "-пусто-":
+                case "- пусто -":
+                case "первый странник":
+                case "ничто":
+                    CharacterMode = "null";
+                    PitchShift = 0.78;
+                    BassGainDb = 7.0;
+                    TrebleGainDb = 3.0;
+                    MonolithChorus = true;
+                    CyberEffect = true;
+                    WarmDrive = false;
+                    ExosuitMix = 0.05;
+                    ReverbWet = 0.25;
+                    EchoWet = 0.08;
+                    break;
+
                 case "wanderer":
                 case "странник":
                 case "раса странников":

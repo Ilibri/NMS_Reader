@@ -420,10 +420,19 @@ namespace NMS_Reader.Services
             if (gekPixels >= 40 && gekPixels >= vykeenPixels && gekPixels >= korvaxPixels)
                 return "gek";
 
-            // Disambiguate between Korvax and Vy'keen if colored pixels are present
+            // Disambiguate characters and races if text hint is available
             if (!string.IsNullOrWhiteSpace(textHint))
             {
                 string lower = textHint.ToLowerInvariant();
+                if (lower.Contains("аполлон") || lower.Contains("голограмма аполлона"))
+                    return "apollo";
+                if (lower.Contains("- пусто -") || lower.Contains("-пусто-") || lower.Contains("первый странник"))
+                    return "null";
+                if (lower.Contains("артемида") || lower.Contains("голограмма артемиды"))
+                    return "artemis";
+                if (lower.Contains("монолит") || lower.Contains("атлас"))
+                    return "monolith";
+
                 if (korvaxPixels >= 25 && (lower.Contains("корвакс") || lower.Contains("сущность") || lower.Contains("синтез") || lower.Contains("нада")))
                     return "korvax";
                 if (vykeenPixels >= 25 && (lower.Contains("вай'кин") || lower.Contains("вайкин") || lower.Contains("воин") || lower.Contains("грах")))

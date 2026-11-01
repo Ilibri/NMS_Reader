@@ -154,6 +154,10 @@ namespace NMS_Reader
                             "gek" => "gek",
                             "vykeen" => "vykeen",
                             "korvax" => "korvax",
+                            "apollo" => "apollo",
+                            "null" => "null",
+                            "artemis" => "artemis",
+                            "monolith" => "monolith",
                             _ => !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male"
                         };
 
@@ -164,6 +168,10 @@ namespace NMS_Reader
                             "gek" => "🐸 Гек (зеленый текст)",
                             "vykeen" => "⚔️ Вай'кин (красный текст)",
                             "korvax" => "🤖 Корвакс (сиреневый текст)",
+                            "apollo" => "🦾 Аполлон (голотерминал)",
+                            "null" => "🔺 - пусто - (Первый Странник)",
+                            "artemis" => "🛰️ Артемида (сигнал связи)",
+                            "monolith" => "🌌 Монолит (хор Атласа)",
                             _ => presetKey switch
                             {
                                 "suit_female" => "👩 Мысли Главного Героя (Женский)",
@@ -171,6 +179,10 @@ namespace NMS_Reader
                                 "gek" => "🐸 Мысли Главного Героя (Гек)",
                                 "korvax" => "🤖 Мысли Главного Героя (Корвакс)",
                                 "vykeen" => "⚔️ Мысли Главного Героя (Вай'кин)",
+                                "apollo" => "🦾 Мысли Главного Героя (Аполлон)",
+                                "null" => "🔺 Мысли Главного Героя (- пусто -)",
+                                "artemis" => "🛰️ Мысли Главного Героя (Артемида)",
+                                "monolith" => "🌌 Мысли Главного Героя (Монолит)",
                                 _ => $"🎭 Мысли Главного Героя ({presetKey})"
                             }
                         };
@@ -453,6 +465,10 @@ namespace NMS_Reader
                         "gek" => "gek",
                         "vykeen" => "vykeen",
                         "korvax" => "korvax",
+                        "apollo" => "apollo",
+                        "null" => "null",
+                        "artemis" => "artemis",
+                        "monolith" => "monolith",
                         _ => !string.IsNullOrEmpty(_config.ProtagonistPresetKey) ? _config.ProtagonistPresetKey : "suit_male"
                     };
 
@@ -463,10 +479,21 @@ namespace NMS_Reader
                         "gek" => "🐸 Гек (зеленый текст)",
                         "vykeen" => "⚔️ Вай'кин (красный текст)",
                         "korvax" => "🤖 Корвакс (сиреневый текст)",
+                        "apollo" => "🦾 Аполлон (голотерминал)",
+                        "null" => "🔺 - пусто - (Первый Странник)",
+                        "artemis" => "🛰️ Артемида (сигнал связи)",
+                        "monolith" => "🌌 Монолит (хор Атласа)",
                         _ => presetKey switch
                         {
                             "suit_female" => "👩 Мысли Главного Героя (Женский)",
                             "suit_male" => "👨 Мысли Главного Героя (Мужской)",
+                            "gek" => "🐸 Мысли Главного Героя (Гек)",
+                            "korvax" => "🤖 Мысли Главного Героя (Корвакс)",
+                            "vykeen" => "⚔️ Мысли Главного Героя (Вай'кин)",
+                            "apollo" => "🦾 Мысли Главного Героя (Аполлон)",
+                            "null" => "🔺 Мысли Главного Героя (- пусто -)",
+                            "artemis" => "🛰️ Мысли Главного Героя (Артемида)",
+                            "monolith" => "🌌 Мысли Главного Героя (Монолит)",
                             _ => $"🎭 Мысли Главного Героя ({presetKey})"
                         }
                     };
@@ -574,6 +601,14 @@ namespace NMS_Reader
             {
                 testPhrase = "Ты меня слышишь?.. Мой передатчик едва ловит сигнал. Пожалуйста, не уходи, ответь мне...";
             }
+            else if (_config.CharacterMode == "apollo")
+            {
+                testPhrase = "Голотерминал на связи! Слышишь меня, путник? Здесь наниты сами себя не заработают!";
+            }
+            else if (_config.CharacterMode == "null")
+            {
+                testPhrase = "Шестнадцать... Я помню каждый цикл, каждый чужой вздох, каждую украденную маску. Ты ищешь истину, странник?";
+            }
             else if (_config.GekThroat)
             {
                 testPhrase = "Друг! Торговец Гек рад тебя видеть! Приготовь наниты, у меня есть редкие технологии!";
@@ -676,7 +711,10 @@ namespace NMS_Reader
                     "korvax" => "vykeen",
                     "vykeen" => "wanderer",
                     "wanderer" => "artemis",
-                    "artemis" => "monolith",
+                    "artemis" => "apollo",
+                    "apollo" => "null",
+                    "null" => "monolith",
+                    "monolith" => "suit_female",
                     _ => "suit_female"
                 };
                 AssignProtagonistVoice(nextKey);
@@ -702,6 +740,8 @@ namespace NMS_Reader
             "vykeen" => "⚔️ Воин Вай'кин",
             "wanderer" => "🌌 Раса Странников",
             "artemis" => "🛰️ Артемида",
+            "apollo" => "🦾 Аполлон",
+            "null" => "🔺 - пусто -",
             "monolith" => "🌌 Монолит Атласа",
             _ => key
         };
@@ -769,6 +809,20 @@ namespace NMS_Reader
                     borderColor = Color.FromRgb(234, 179, 8);
                     bgColor = Color.FromRgb(26, 24, 14);
                     break;
+                case "apollo":
+                    emoji = "🦾";
+                    title = "Аполлон";
+                    sub = "● Читает мысли героя (Киборг)";
+                    borderColor = Color.FromRgb(245, 158, 11); // Amber
+                    bgColor = Color.FromRgb(38, 27, 12);
+                    break;
+                case "null":
+                    emoji = "🔺";
+                    title = "- пусто -";
+                    sub = "● Читает мысли героя (Первый Странник)";
+                    borderColor = Color.FromRgb(148, 163, 184); // Slate
+                    bgColor = Color.FromRgb(20, 24, 33);
+                    break;
                 case "monolith":
                     emoji = "🌌";
                     title = "Монолит Атласа";
@@ -793,6 +847,8 @@ namespace NMS_Reader
         private void PresetVykeen_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("vykeen");
         private void PresetWanderer_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("wanderer");
         private void PresetArtemis_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("artemis");
+        private void PresetApollo_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("apollo");
+        private void PresetNull_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("null");
         private void PresetMonolith_Click(object sender, RoutedEventArgs e) => LoadCharacterFromProfile("monolith");
 
         private void LoadCharacterFromProfile(string characterKey)
@@ -950,7 +1006,7 @@ namespace NMS_Reader
             var normalFg = new SolidColorBrush(Color.FromRgb(226, 232, 240));    // #e2e8f0
             var normalThickness = new Thickness(1);
 
-            Button[] allButtons = { BtnSuitFemale, BtnSuitMale, BtnGek, BtnKorvax, BtnVykeen, BtnWanderer, BtnArtemis, BtnMonolith };
+            Button[] allButtons = { BtnSuitFemale, BtnSuitMale, BtnGek, BtnKorvax, BtnVykeen, BtnWanderer, BtnArtemis, BtnApollo, BtnNull, BtnMonolith };
             foreach (var b in allButtons)
             {
                 if (b == null) continue;
@@ -999,6 +1055,8 @@ namespace NMS_Reader
                     "vykeen" => BtnVykeen,
                     "wanderer" => BtnWanderer,
                     "artemis" => BtnArtemis,
+                    "apollo" => BtnApollo,
+                    "null" => BtnNull,
                     "monolith" => BtnMonolith,
                     _ => null
                 };

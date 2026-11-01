@@ -131,6 +131,39 @@ namespace NMS_Reader.Services
                         NoiseScale = 0.90,
                         SentenceSilence = 0.25
                     },
+                    ["apollo"] = new VoicePresetItem
+                    {
+                        CharacterKey = "apollo",
+                        DisplayName = "Аполлон",
+                        VoiceModel = "ruslan",
+                        SpeakingRate = 1.08,
+                        PitchShift = 0.92,
+                        BassGainDb = 5.0,
+                        TrebleGainDb = 4.0,
+                        ReverbWet = 0.08,
+                        ExosuitMix = 0.30,
+                        CyberEffect = true,
+                        WarmDrive = true,
+                        NoiseScale = 0.80,
+                        SentenceSilence = 0.20
+                    },
+                    ["null"] = new VoicePresetItem
+                    {
+                        CharacterKey = "null",
+                        DisplayName = "- пусто -",
+                        VoiceModel = "ruslan",
+                        SpeakingRate = 0.88,
+                        PitchShift = 0.78,
+                        BassGainDb = 7.0,
+                        TrebleGainDb = 3.0,
+                        ReverbWet = 0.25,
+                        MonolithChorus = true,
+                        CyberEffect = true,
+                        WarmDrive = false,
+                        ExosuitMix = 0.05,
+                        NoiseScale = 0.50,
+                        SentenceSilence = 0.45
+                    },
                     ["monolith"] = new VoicePresetItem
                     {
                         CharacterKey = "monolith",

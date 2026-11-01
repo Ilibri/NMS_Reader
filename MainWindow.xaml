@@ -243,6 +243,12 @@
                         <Button x:Name="BtnArtemis" Tag="artemis" Content="🛰️ Артемида" Style="{StaticResource PresetBtn}" Click="PresetArtemis_Click" 
                                 PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
                                 ToolTip="Голос Артемиды. Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnApollo" Tag="apollo" Content="🦾 Аполлон" Style="{StaticResource PresetBtn}" Click="PresetApollo_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос Аполлона (киборг, голотерминал). Можно перетащить в слот Главного Героя!"/>
+                        <Button x:Name="BtnNull" Tag="null" Content="🔺 - пусто -" Style="{StaticResource PresetBtn}" Click="PresetNull_Click" 
+                                PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
+                                ToolTip="Голос - пусто - (Первый Странник, хор душ). Можно перетащить в слот Главного Героя!"/>
                         <Button x:Name="BtnMonolith" Tag="monolith" Content="🌌 Монолит Атласа" Style="{StaticResource PresetBtn}" Click="PresetMonolith_Click" 
                                 PreviewMouseLeftButtonDown="PresetBtn_PreviewMouseLeftButtonDown" PreviewMouseMove="PresetBtn_PreviewMouseMove"
                                 ToolTip="Загадочный хор Монолита. Можно перетащить в слот Главного Героя!"/>
