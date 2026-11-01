@@ -229,7 +229,9 @@ namespace NMS_Reader.Services
                     PitchShift = 1.0;
                     BassGainDb = 0.0;
                     TrebleGainDb = 0.0;
-                    ReverbWet = 0.0;
+                    ReverbWet = 0.15;
+                    ExosuitMix = 0.20;
+                    ExosuitRadio = true;
                     EchoWet = 0.0;
                     break;
             }

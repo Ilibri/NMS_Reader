@@ -1057,13 +1057,21 @@ namespace NMS_Reader
             }
 
             bool isThoughts = presetKey is "suit_female" or "suit_male";
+            bool isRace = presetKey is "gek" or "korvax" or "vykeen" or "wanderer" or "monolith";
+            bool isCharacter = presetKey is "artemis" or "apollo" or "null" or "nada" or "polo";
+
+            var dimColor = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // #94a3b8 Slate
+            ThoughtsHeader.Foreground = dimColor;
+            ThoughtsHeader.FontWeight = FontWeights.SemiBold;
+            RacesHeader.Foreground = dimColor;
+            RacesHeader.FontWeight = FontWeights.SemiBold;
+            CharactersHeader.Foreground = dimColor;
+            CharactersHeader.FontWeight = FontWeights.SemiBold;
 
             if (isThoughts)
             {
                 ThoughtsHeader.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153)); // #34d399 Emerald green
                 ThoughtsHeader.FontWeight = FontWeights.Bold;
-                UniverseHeader.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // #94a3b8 Slate
-                UniverseHeader.FontWeight = FontWeights.SemiBold;
 
                 Button? activeBtn = presetKey switch
                 {
@@ -1080,13 +1088,10 @@ namespace NMS_Reader
                     activeBtn.BorderThickness = new Thickness(1.5);
                 }
             }
-            else
+            else if (isRace)
             {
-                // Normal Thoughts header, accent Universe header
-                ThoughtsHeader.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // #94a3b8
-                ThoughtsHeader.FontWeight = FontWeights.SemiBold;
-                UniverseHeader.Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248));  // #38bdf8 Cyan
-                UniverseHeader.FontWeight = FontWeights.Bold;
+                RacesHeader.Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248));  // #38bdf8 Cyan
+                RacesHeader.FontWeight = FontWeights.Bold;
 
                 Button? activeBtn = presetKey switch
                 {
@@ -1094,11 +1099,6 @@ namespace NMS_Reader
                     "korvax" => BtnKorvax,
                     "vykeen" => BtnVykeen,
                     "wanderer" => BtnWanderer,
-                    "artemis" => BtnArtemis,
-                    "apollo" => BtnApollo,
-                    "null" => BtnNull,
-                    "nada" => BtnNada,
-                    "polo" => BtnPolo,
                     "monolith" => BtnMonolith,
                     _ => null
                 };
@@ -1108,6 +1108,29 @@ namespace NMS_Reader
                     activeBtn.BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248)); // #38bdf8
                     activeBtn.Background = new SolidColorBrush(Color.FromRgb(12, 74, 110));   // #0c4a6e
                     activeBtn.Foreground = new SolidColorBrush(Color.FromRgb(186, 230, 253)); // #bae6fd
+                    activeBtn.BorderThickness = new Thickness(1.5);
+                }
+            }
+            else if (isCharacter)
+            {
+                CharactersHeader.Foreground = new SolidColorBrush(Color.FromRgb(244, 114, 182)); // #f472b6 Pink
+                CharactersHeader.FontWeight = FontWeights.Bold;
+
+                Button? activeBtn = presetKey switch
+                {
+                    "artemis" => BtnArtemis,
+                    "apollo" => BtnApollo,
+                    "null" => BtnNull,
+                    "nada" => BtnNada,
+                    "polo" => BtnPolo,
+                    _ => null
+                };
+
+                if (activeBtn != null)
+                {
+                    activeBtn.BorderBrush = new SolidColorBrush(Color.FromRgb(244, 114, 182)); // #f472b6
+                    activeBtn.Background = new SolidColorBrush(Color.FromRgb(80, 7, 36));     // deep wine/plum
+                    activeBtn.Foreground = new SolidColorBrush(Color.FromRgb(251, 207, 232)); // #fbcfe8
                     activeBtn.BorderThickness = new Thickness(1.5);
                 }
             }
